@@ -6,8 +6,8 @@ screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- 按钮样式配置
 local buttonStyle = {
-    Size = UDim2.new(0, 120, 0, 30)，
-    BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)，
+    Size = UDim2.new(0, 120, 0, 30),
+    BackgroundColor3 = Color3.new(0.1, 0.1, 0.1),
     BackgroundTransparency = 0.5,
     Font = Enum.Font.SourceSansBold,
     TextSize = 16
@@ -77,7 +77,7 @@ autoSeedsButton.MouseButton1Click:Connect(function()
                     task.wait(0.1)  -- 添加延迟防止服务器限制
                 end
                 
-                task.wait(0.5)  -- 每0.5秒尝试购买一次
+                task.wait(0.2)  -- 每0.2秒尝试购买一次
             end
         end)
     end
@@ -110,7 +110,7 @@ autoToolsButton.MouseButton1Click:Connect(function()
                     task.wait(0.1)  -- 添加延迟防止服务器限制
                 end
                 
-                task.wait(0.5)  -- 每0.5秒尝试购买一次
+                task.wait(0.2)  -- 每0.2秒尝试购买一次
             end
         end)
     end
