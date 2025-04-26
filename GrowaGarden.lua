@@ -1,8 +1,25 @@
--- 创建 ScreenGui
+-- 服务声明
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui = game:GetService("StarterGui")
+
+-- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FarmAutomationUI"
+screenGui.Name = "UniversalUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- 获取游戏名称
+local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+
+-- 初始化UI通知
+StarterGui:SetCore("SendNotification", {
+    Title = gameName,
+    Text = "inltree｜"..gameName.." Script Loading...｜加载中...",
+    Duration = 3
+})
+
+task.wait(5)
 
 -- 按钮样式配置
 local buttonStyle = {
@@ -34,18 +51,18 @@ local function createButton(name, position, color, callback)
     return button
 end
 
--- 创建隐藏UI按钮
+-- 创建功能按钮
 local hideButton = createButton("隐藏UI", UDim2.new(1, -130, 0, 10), Color3.new(1, 0.5, 0))
 local isHidden = false
 
--- 创建关闭UI按钮
 createButton("关闭UI", UDim2.new(1, -130, 0, 50), Color3.new(1, 0, 0), function()
     screenGui:Destroy()
+    print("UI已关闭")
 end)
 
--- 创建控制台按钮
 createButton("控制台", UDim2.new(1, -130, 0, 90), Color3.new(1, 1, 0.5), function()
     game:GetService("VirtualInputManager"):SendKeyEvent(true, "F9", false, game)
+    print("已打开控制台")
 end)
 
 -- 自动购买种子功能
@@ -116,7 +133,7 @@ autoToolsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 隐藏和显示 UI 的逻辑
+-- 隐藏/显示UI逻辑
 hideButton.MouseButton1Click:Connect(function()
     isHidden = not isHidden
     for _, child in ipairs(screenGui:GetChildren()) do
@@ -125,57 +142,63 @@ hideButton.MouseButton1Click:Connect(function()
         end
     end
     hideButton.Text = isHidden and "显示UI" or "隐藏UI"
+    print("UI状态:", isHidden and "已隐藏" or "已显示")
 end)
 
--- 拖动功能
-local dragging = false
-local dragInput
-local dragStart = nil
-local startPos = nil
+-- 拖动功能 
+local dragging = false 
+local dragInput 
+local dragStart = nil 
+local startPos = nil 
 
-local function updatePos(input)
-    local delta = input.Position - dragStart
-    hideButton.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + delta.X, 
-        startPos.Y.Scale, 
-        startPos.Y.Offset + delta.Y
-    )
-    
-    local yOffset = 40
-    for i, child in ipairs(screenGui:GetChildren()) do
-        if child:IsA("TextButton") and child ~= hideButton then
-            child.Position = UDim2.new(
-                hideButton.Position.X.Scale,
-                hideButton.Position.X.Offset,
-                hideButton.Position.Y.Scale,
-                hideButton.Position.Y.Offset + yOffset * (i-1)
-            )
-        end
-    end
-end
+local function updatePos(input) 
+    local delta = input.Position - dragStart 
+    hideButton.Position = UDim2.new( 
+        startPos.X.Scale, startPos.X.Offset + delta.X, 
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y 
+    ) 
+    local yOffset = 40 
+    for i, child in ipairs(screenGui:GetChildren()) do 
+        if child:IsA("TextButton") and child ~= hideButton then 
+            child.Position = UDim2.new( 
+                hideButton.Position.X.Scale, hideButton.Position.X.Offset, 
+                hideButton.Position.Y.Scale, hideButton.Position.Y.Offset + yOffset * (i-1) 
+            ) 
+        end 
+    end 
+end 
 
-hideButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = hideButton.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
+hideButton.InputBegan:Connect(function(input) 
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+        dragging = true 
+        dragStart = input.Position 
+        startPos = hideButton.Position 
+        input.Changed:Connect(function() 
+            if input.UserInputState == Enum.UserInputState.End then 
+                dragging = false 
+            end 
+        end) 
+    end 
+end) 
+
+hideButton.InputChanged:Connect(function(input) 
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
+        dragInput = input 
+    end 
+end) 
+
+game:GetService("UserInputService").InputChanged:Connect(function(input) 
+    if dragging and input == dragInput then 
+        updatePos(input) 
+    end 
 end)
 
-hideButton.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        dragInput = input
-    end
-end)
+-- 加载完成通知
+task.wait(0.5)
+StarterGui:SetCore("SendNotification", {
+    Title = gameName,
+    Text = gameName.."｜种植花园｜加载完成",
+    Duration = 3
+})
 
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if dragging and input == dragInput then
-        updatePos(input)
-    end
-end)
+warn("\n"..(("="):rep(40).."\n脚本名称: "..gameName.."｜种植花园\n描述: 种植花园｜脚本\n版本: 0.1.1\n作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
