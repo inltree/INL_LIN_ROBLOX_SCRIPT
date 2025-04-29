@@ -3,7 +3,7 @@
  
 - 仓库简介：**Roblox｜Lua**
  
-### M.E.G. Endless Reality｜Script
+ ### M.E.G. Endless Reality｜Script
 
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/M.E.G.EndlessRealityScript.lua"))()
@@ -22,6 +22,18 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 ```
 
 - 脚本简介：**种植花园｜Script**｜购买所有种子及工具
+
+- 使用方法：执行即用
+
+- 注意事项：无
+
+### Dig it｜Script
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/Digit.lua"))()
+```
+
+- 脚本简介：**挖掘它｜Script**｜包含复活节活动、蛋狩猎、半自动外星人和半自动里德利(含危险对象移除)功能
 
 - 使用方法：执行即用
 
