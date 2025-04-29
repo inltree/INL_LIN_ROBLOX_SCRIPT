@@ -89,7 +89,6 @@ end
 -- Egg收集功能
 local eggCollectionRunning = false
 local eggCollectionThread = nil
-local collectedEggs = {} -- 用于记录已收集的Egg
 
 local function stopEggCollection()
     if eggCollectionRunning then
@@ -98,7 +97,6 @@ local function stopEggCollection()
             coroutine.close(eggCollectionThread)
             eggCollectionThread = nil
         end
-        table.clear(collectedEggs) -- 清空已收集记录
         print("⏹️ 蛋狩猎已停止")
     end
 end
@@ -110,7 +108,6 @@ local function startEggCollection()
     end
     
     eggCollectionRunning = true
-    table.clear(collectedEggs) -- 开始新的收集时清空记录
     
     local player = game.Players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
@@ -119,9 +116,9 @@ local function startEggCollection()
     eggCollectionThread = coroutine.create(function()
         while eggCollectionRunning do
             local eggs = {}
-            -- 只收集未被收集过的Egg
+            -- 收集所有蛋
             for _, child in ipairs(workspace:GetChildren()) do
-                if child.Name == "Egg" and child:IsA("BasePart") and not collectedEggs[child] then
+                if child.Name == "Egg" and child:IsA("BasePart") then
                     table.insert(eggs, child)
                 end
             end
@@ -132,18 +129,17 @@ local function startEggCollection()
                     return a.Position.X < b.Position.X
                 end)
 
-                -- 传送并标记已收集
+                -- 循环传送所有蛋
                 for i, egg in ipairs(eggs) do
                     if not eggCollectionRunning then break end
                     
                     humanoidRootPart.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
-                    collectedEggs[egg] = true -- 标记为已收集
                     print("🚀 传送到蛋 ["..i.."/"..#eggs.."]: "..egg.Name)
                     
                     task.wait(1)
                 end
             else
-                task.wait(2) -- 没有新蛋时等待2秒再检查
+                task.wait(2) -- 没有蛋时等待2秒再检查
             end
         end
         
@@ -364,4 +360,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎和半自动外星人功能\n- 版本: 0.1.6\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎和半自动外星人功能\n- 版本: 0.1.7\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
