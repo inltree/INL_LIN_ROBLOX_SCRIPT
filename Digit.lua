@@ -52,12 +52,11 @@ local function createButton(name, position, color, callback)
     return button
 end
 
--- 复活节活动功能
+-- ===================== 复活节活动功能 =====================
 local function activateEasterBoard()
     pcall(function()
         local easterBoard = workspace.Map.Islands["Easter Island"]["Easter Board"]
         
-        -- 递归查找
         local function findFirstPrompt(parent)
             for _, child in ipairs(parent:GetDescendants()) do
                 if child:IsA("ProximityPrompt") then
@@ -86,7 +85,7 @@ local function activateEasterAngel()
     end)
 end
 
--- Egg收集功能
+-- ===================== Egg收集功能 =====================
 local eggCollectionRunning = false
 local eggCollectionThread = nil
 
@@ -110,51 +109,47 @@ local function startEggCollection()
     eggCollectionRunning = true
     
     local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     
     eggCollectionThread = coroutine.create(function()
-        while eggCollectionRunning do
-            local eggs = {}
-            -- 收集所有蛋
-            for _, child in ipairs(workspace:GetChildren()) do
-                if child.Name == "Egg" and child:IsA("BasePart") then
-                    table.insert(eggs, child)
+        while eggCollectionRunning and player do
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local eggs = {}
+                    for _, child in ipairs(workspace:GetChildren()) do
+                        if child.Name == "Egg" and child:IsA("BasePart") then
+                            table.insert(eggs, child)
+                        end
+                    end
+
+                    if #eggs > 0 then
+                        table.sort(eggs, function(a, b)
+                            return a.Position.X < b.Position.X
+                        end)
+
+                        for i, egg in ipairs(eggs) do
+                            if not eggCollectionRunning or not character or not character:FindFirstChild("HumanoidRootPart") then break end
+                            humanoidRootPart.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
+                            print("🚀 传送到蛋 ["..i.."/"..#eggs.."]: "..egg.Name)
+                            task.wait(1)
+                        end
+                    else
+                        task.wait(2)
+                    end
                 end
             end
-
-            if #eggs > 0 then
-                -- 按位置排序
-                table.sort(eggs, function(a, b)
-                    return a.Position.X < b.Position.X
-                end)
-
-                -- 循环传送所有蛋
-                for i, egg in ipairs(eggs) do
-                    if not eggCollectionRunning then break end
-                    
-                    humanoidRootPart.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
-                    print("🚀 传送到蛋 ["..i.."/"..#eggs.."]: "..egg.Name)
-                    
-                    task.wait(1)
-                end
-            else
-                task.wait(2) -- 没有蛋时等待2秒再检查
-            end
+            task.wait(0.1)
         end
-        
         eggCollectionRunning = false
         eggCollectionThread = nil
     end)
-    
     coroutine.resume(eggCollectionThread)
 end
 
--- 外星人传送功能
+-- ===================== 外星人传送功能 =====================
 local alienTeleportRunning = false
 local alienTeleportThread = nil
-
--- 粘液自动提交功能
 local DepositGooEvent = ReplicatedStorage:WaitForChild("Source")
     :WaitForChild("Network")
     :WaitForChild("RemoteEvents")
@@ -175,14 +170,13 @@ local function setupBackpackMonitor()
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
     
-    -- 持续检查背包中的Alien Goo
-    while alienTeleportRunning do
+    while alienTeleportRunning and player do
         local alienGoo = backpack:FindFirstChild("Alien Goo")
         if alienGoo then
-            task.wait(5) -- 等待5秒后提交
+            task.wait(5)
             DepositGooEvent:FireServer()
         end
-        task.wait(0.5) -- 每0.5秒检查一次背包
+        task.wait(0.5)
     end
 end
 
@@ -205,7 +199,6 @@ local function findNearestAlien(character)
             end
         end
     end
-    
     return nearestAlien
 end
 
@@ -216,30 +209,139 @@ local function startAlienTeleport()
     end
     
     alienTeleportRunning = true
-    
     local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
     
-    -- 启动背包监控
     coroutine.wrap(setupBackpackMonitor)()
     
     alienTeleportThread = coroutine.create(function()
-        while alienTeleportRunning do
-            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-            if humanoidRootPart then
-                local nearestAlien = findNearestAlien(character)
-                if nearestAlien then
-                    humanoidRootPart.CFrame = nearestAlien.CFrame + Vector3.new(0, 9, 0)
+        while alienTeleportRunning and player do
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local nearestAlien = findNearestAlien(character)
+                    if nearestAlien then
+                        humanoidRootPart.CFrame = nearestAlien.CFrame + Vector3.new(0, 9, 0)
+                    end
                 end
             end
-            task.wait(0.3) -- 每0.3秒检测一次最近的外星人
+            task.wait(0.3)
         end
+        alienTeleportRunning = false
+        alienTeleportThread = nil
     end)
-    
     coroutine.resume(alienTeleportThread)
 end
 
--- 创建功能按钮
+-- ===================== 半自动里德利功能(含危险对象移除) =====================
+local ridleyTeleportRunning = false
+local ridleyTeleportThread = nil
+local objectsToRemove = {"AcidPool"} -- 只保留AcidPool
+
+local function stopRidleyTeleport()
+    if ridleyTeleportRunning then
+        ridleyTeleportRunning = false
+        if ridleyTeleportThread then
+            coroutine.close(ridleyTeleportThread)
+            ridleyTeleportThread = nil
+        end
+        print("⏹️ 里德利传送已停止")
+    end
+end
+
+local function removeDangerParts()
+    -- 移除Ridley's Cave中的危险部件
+    local ridleysCave = workspace.Map.Islands["Ridley's Cave"]
+    if ridleysCave then
+        for _, child in ipairs(ridleysCave:GetChildren()) do
+            local hasTouchInterest = false
+            local hasTexture = false
+            
+            for _, descendant in ipairs(child:GetDescendants()) do
+                if descendant.Name == "TouchInterest" then
+                    hasTouchInterest = true
+                elseif descendant.Name == "Texture" then
+                    hasTexture = true
+                end
+                
+                if hasTouchInterest and hasTexture then
+                    break
+                end
+            end
+            
+            if hasTouchInterest and hasTexture then
+                child:Destroy()
+                print("✅ 已移除危险Part: "..child.Name)
+            end
+        end
+    end
+    
+    -- 移除Camera下的AcidPool对象
+    local acidPool = workspace.Camera:FindFirstChild("AcidPool")
+    if acidPool then
+        acidPool:Destroy()
+    end
+end
+
+local function findNearestBomb(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local nearestBomb = nil
+    local minDistance = math.huge
+    
+    local bombSpawnPoints = workspace.Map.DinoArena.BombSpawnPoints:GetChildren()
+    for _, spawnPoint in ipairs(bombSpawnPoints) do
+        for _, child in ipairs(spawnPoint:GetChildren()) do
+            if child:IsA("Model") and child.Name == "Bomb" then
+                local targetPart = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart
+                if targetPart then
+                    local distance = (humanoidRootPart.Position - targetPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        nearestBomb = targetPart
+                    end
+                end
+            end
+        end
+    end
+    return nearestBomb
+end
+
+local function startRidleyTeleport()
+    if ridleyTeleportRunning then
+        stopRidleyTeleport()
+        return
+    end
+    
+    ridleyTeleportRunning = true
+    local player = game.Players.LocalPlayer
+    
+    removeDangerParts()
+    
+    ridleyTeleportThread = coroutine.create(function()
+        while ridleyTeleportRunning and player do
+            removeDangerParts()
+            
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local nearestBomb = findNearestBomb(character)
+                    if nearestBomb then
+                        humanoidRootPart.CFrame = nearestBomb.CFrame + Vector3.new(0, 3, 0)
+                    end
+                end
+            end
+            task.wait(0.3)
+        end
+        ridleyTeleportRunning = false
+        ridleyTeleportThread = nil
+    end)
+    coroutine.resume(ridleyTeleportThread)
+end
+
+-- ===================== 创建功能按钮 =====================
 local hideButton = createButton("隐藏UI", UDim2.new(1, -130, 0, 10), Color3.new(1, 0.5, 0))
 local isHidden = false
 
@@ -254,57 +356,37 @@ createButton("控制台", UDim2.new(1, -130, 0, 90), Color3.new(1, 1, 0.5), func
 end)
 
 -- 复活节活动按钮
-createButton("复活节任务板", UDim2.new(1, -130, 0, 130), Color3.new(0.8, 0.2, 0.8), function()
-    activateEasterBoard()
-end)
-
-createButton("复活节商店", UDim2.new(1, -130, 0, 170), Color3.new(0.8, 0.2, 0.8), function()
-    activateEasterAngel()
-end)
+createButton("复活节任务板", UDim2.new(1, -130, 0, 130), Color3.new(0.8, 0.2, 0.8), activateEasterBoard)
+createButton("复活节商店", UDim2.new(1, -130, 0, 170), Color3.new(0.8, 0.2, 0.8), activateEasterAngel)
 
 -- 蛋狩猎按钮
-local eggHuntEnabled = false
 local eggHuntButton = createButton("蛋狩猎: 关", UDim2.new(1, -130, 0, 210), Color3.new(0.5, 1, 0.5))
 eggHuntButton.MouseButton1Click:Connect(function()
     eggHuntEnabled = not eggHuntEnabled
     eggHuntButton.Text = "蛋狩猎: "..(eggHuntEnabled and "开" or "关")
     eggHuntButton.TextColor3 = eggHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,1,0.5)
-    
-    if eggHuntEnabled then
-        startEggCollection()
-    else
-        stopEggCollection()
-    end
+    if eggHuntEnabled then startEggCollection() else stopEggCollection() end
 end)
 
 -- 半自动外星人按钮
-local alienHuntEnabled = false
 local alienHuntButton = createButton("半自动外星人: 关", UDim2.new(1, -130, 0, 250), Color3.new(1, 0.5, 0))
 alienHuntButton.MouseButton1Click:Connect(function()
     alienHuntEnabled = not alienHuntEnabled
     alienHuntButton.Text = "半自动外星人: "..(alienHuntEnabled and "开" or "关")
     alienHuntButton.TextColor3 = alienHuntEnabled and Color3.new(0,1,0) or Color3.new(1,0.5,0)
-    
-    if alienHuntEnabled then
-        startAlienTeleport()
-    else
-        stopAlienTeleport()
-    end
+    if alienHuntEnabled then startAlienTeleport() else stopAlienTeleport() end
 end)
 
--- 隐藏/显示UI逻辑
-hideButton.MouseButton1Click:Connect(function()
-    isHidden = not isHidden
-    for _, child in ipairs(screenGui:GetChildren()) do
-        if child:IsA("TextButton") and child ~= hideButton then
-            child.Visible = not isHidden
-        end
-    end
-    hideButton.Text = isHidden and "显示UI" or "隐藏UI"
-    print("UI状态:", isHidden and "已隐藏" or "已显示")
+-- 半自动里德利按钮(包含危险对象移除)
+local ridleyHuntButton = createButton("半自动里德利: 关", UDim2.new(1, -130, 0, 290), Color3.new(0.5, 0.8, 1))
+ridleyHuntButton.MouseButton1Click:Connect(function()
+    ridleyHuntEnabled = not ridleyHuntEnabled
+    ridleyHuntButton.Text = "半自动里德利: "..(ridleyHuntEnabled and "开" or "关")
+    ridleyHuntButton.TextColor3 = ridleyHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,0.8,1)
+    if ridleyHuntEnabled then startRidleyTeleport() else stopRidleyTeleport() end
 end)
 
--- 拖动功能 
+-- ===================== UI拖动功能 =====================
 local dragging = false 
 local dragInput 
 local dragStart = nil 
@@ -352,6 +434,18 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end 
 end)
 
+-- 隐藏/显示UI逻辑
+hideButton.MouseButton1Click:Connect(function()
+    isHidden = not isHidden
+    for _, child in ipairs(screenGui:GetChildren()) do
+        if child:IsA("TextButton") and child ~= hideButton then
+            child.Visible = not isHidden
+        end
+    end
+    hideButton.Text = isHidden and "显示UI" or "隐藏UI"
+    print("UI状态:", isHidden and "已隐藏" or "已显示")
+end)
+
 -- 加载完成通知
 task.wait(0.5)
 StarterGui:SetCore("SendNotification", {
@@ -360,4 +454,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎和半自动外星人功能\n- 版本: 0.1.7\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎、半自动外星人和半自动里德利(含危险对象移除)功能\n- 版本: 1.1.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
