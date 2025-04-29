@@ -142,12 +142,7 @@ local function startEggCollection()
                     
                     task.wait(1)
                 end
-                
-                if eggCollectionRunning then
-                    print("✅ 本轮找到 "..#eggs.." 个新蛋")
-                end
             else
-                print("🔍 未发现新蛋")
                 task.wait(2) -- 没有新蛋时等待2秒再检查
             end
         end
@@ -162,7 +157,6 @@ end
 -- 外星人传送功能
 local alienTeleportRunning = false
 local alienTeleportThread = nil
-local teleportedAliens = {} -- 记录已传送过的外星人
 
 -- 粘液自动提交功能
 local DepositGooEvent = ReplicatedStorage:WaitForChild("Source")
@@ -177,7 +171,6 @@ local function stopAlienTeleport()
             coroutine.close(alienTeleportThread)
             alienTeleportThread = nil
         end
-        table.clear(teleportedAliens)
         print("⏹️ 外星人传送已停止")
     end
 end
@@ -192,10 +185,32 @@ local function setupBackpackMonitor()
         if alienGoo then
             task.wait(5) -- 等待5秒后提交
             DepositGooEvent:FireServer()
-            print("🟢 检测到Alien Goo，已自动提交")
         end
         task.wait(0.5) -- 每0.5秒检查一次背包
     end
+end
+
+local function findNearestAlien(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local nearestAlien = nil
+    local minDistance = math.huge
+    
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child.Name == "Alien" and child:IsA("Model") then
+            local targetPart = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart
+            if targetPart then
+                local distance = (humanoidRootPart.Position - targetPart.Position).Magnitude
+                if distance < minDistance then
+                    minDistance = distance
+                    nearestAlien = targetPart
+                end
+            end
+        end
+    end
+    
+    return nearestAlien
 end
 
 local function startAlienTeleport()
@@ -205,53 +220,23 @@ local function startAlienTeleport()
     end
     
     alienTeleportRunning = true
-    table.clear(teleportedAliens)
     
     local player = game.Players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     
     -- 启动背包监控
     coroutine.wrap(setupBackpackMonitor)()
     
     alienTeleportThread = coroutine.create(function()
         while alienTeleportRunning do
-            local aliens = {}
-            -- 收集所有外星人
-            for _, child in ipairs(workspace:GetChildren()) do
-                if child.Name == "Alien" and child:IsA("Model") then
-                    local targetPart = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart
-                    if targetPart then
-                        table.insert(aliens, {
-                            model = child,
-                            part = targetPart
-                        })
-                    end
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local nearestAlien = findNearestAlien(character)
+                if nearestAlien then
+                    humanoidRootPart.CFrame = nearestAlien.CFrame + Vector3.new(0, 9, 0)
                 end
             end
-
-            if #aliens > 0 then
-                -- 按X坐标排序
-                table.sort(aliens, function(a, b)
-                    return a.part.Position.X < b.part.Position.X
-                end)
-
-                -- 传送
-                for i, alien in ipairs(aliens) do
-                    if not alienTeleportRunning then break end
-                    
-                    humanoidRootPart.CFrame = alien.part.CFrame + Vector3.new(0, 10, 0)
-                    print(string.format("🚀 传送到外星人 [%d/%d] %s", 
-                        i, #aliens, alien.model.Name))
-                    
-                    task.wait(5) -- 每个外星人停留5秒
-                end
-            else
-                print("🔍 未发现外星人")
-            end
-            
-            -- 立即开始下一轮扫描
-            task.wait(0.1)
+            task.wait(0.3) -- 每0.3秒检测一次最近的外星人
         end
     end)
     
@@ -379,4 +364,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎和半自动外星人功能\n- 版本: 0.1.3\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎和半自动外星人功能\n- 版本: 0.1.6\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
