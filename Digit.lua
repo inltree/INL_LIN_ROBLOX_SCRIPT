@@ -52,6 +52,77 @@ local function createButton(name, position, color, callback)
     return button
 end
 
+-- ===================== 自动朗克斯功能 =====================
+local lankersTeleportRunning = false
+local lankersTeleportThread = nil
+
+local function stopLankersTeleport()
+    if lankersTeleportRunning then
+        lankersTeleportRunning = false
+        if lankersTeleportThread then
+            coroutine.close(lankersTeleportThread)
+            lankersTeleportThread = nil
+        end
+        print("⏹️ 自动朗克斯已停止")
+    end
+end
+
+local function findNearestLankers(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local nearestLankers = nil
+    local minDistance = math.huge
+    
+    -- 检查_Effects文件夹下的所有Model
+    local effectsFolder = workspace:FindFirstChild("_Effects")
+    if effectsFolder then
+        for _, child in ipairs(effectsFolder:GetChildren()) do
+            if child:IsA("Model") then
+                local targetPart = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart
+                if targetPart then
+                    local distance = (humanoidRootPart.Position - targetPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        nearestLankers = targetPart
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestLankers
+end
+
+local function startLankersTeleport()
+    if lankersTeleportRunning then
+        stopLankersTeleport()
+        return
+    end
+    
+    lankersTeleportRunning = true
+    local player = game.Players.LocalPlayer
+    
+    lankersTeleportThread = coroutine.create(function()
+        while lankersTeleportRunning and player do
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local nearestLankers = findNearestLankers(character)
+                    if nearestLankers then
+                        humanoidRootPart.CFrame = nearestLankers.CFrame + Vector3.new(0, 3, 0)
+                    end
+                end
+            end
+            task.wait(0.3)
+        end
+        lankersTeleportRunning = false
+        lankersTeleportThread = nil
+    end)
+    coroutine.resume(lankersTeleportThread)
+end
+
 -- ===================== 复活节活动功能 =====================
 local function activateEasterBoard()
     pcall(function()
@@ -233,10 +304,10 @@ local function startAlienTeleport()
     coroutine.resume(alienTeleportThread)
 end
 
--- ===================== 半自动里德利功能(含危险对象移除) =====================
+-- ===================== 半自动里德利功能=====================
 local ridleyTeleportRunning = false
 local ridleyTeleportThread = nil
-local objectsToRemove = {"AcidPool"} -- 只保留AcidPool
+local objectsToRemove = {"AcidPool"}
 
 local function stopRidleyTeleport()
     if ridleyTeleportRunning then
@@ -254,6 +325,7 @@ local function removeDangerParts()
     local ridleysCave = workspace.Map.Islands["Ridley's Cave"]
     if ridleysCave then
         for _, child in ipairs(ridleysCave:GetChildren()) do
+            -- 检查子对象是否同时包含TouchInterest和Texture
             local hasTouchInterest = false
             local hasTexture = false
             
@@ -264,11 +336,13 @@ local function removeDangerParts()
                     hasTexture = true
                 end
                 
+                -- 如果两个条件都满足，则跳出循环
                 if hasTouchInterest and hasTexture then
                     break
                 end
             end
             
+            -- 只有当同时包含TouchInterest和Texture时才移除
             if hasTouchInterest and hasTexture then
                 child:Destroy()
                 print("✅ 已移除危险Part: "..child.Name)
@@ -317,12 +391,15 @@ local function startRidleyTeleport()
     ridleyTeleportRunning = true
     local player = game.Players.LocalPlayer
     
+    -- 先移除一次危险对象
     removeDangerParts()
     
     ridleyTeleportThread = coroutine.create(function()
         while ridleyTeleportRunning and player do
+            -- 持续移除危险对象
             removeDangerParts()
             
+            -- 传送到最近的Bomb
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -342,34 +419,34 @@ local function startRidleyTeleport()
 end
 
 -- ===================== 创建功能按钮 =====================
-local hideButton = createButton("隐藏UI", UDim2.new(1, -130, 0, 10), Color3.new(1, 0.5, 0))
+local hideButton = createButton("隐藏UI", UDim2.new(0, 10, 0, 10), Color3.new(1, 0.5, 0))
 local isHidden = false
 
-createButton("关闭UI", UDim2.new(1, -130, 0, 50), Color3.new(1, 0, 0), function()
+createButton("关闭UI", UDim2.new(0, 10, 0, 50), Color3.new(1, 0, 0), function()
     screenGui:Destroy()
     print("✅ UI已关闭")
 end)
 
-createButton("控制台", UDim2.new(1, -130, 0, 90), Color3.new(1, 1, 0.5), function()
+createButton("控制台", UDim2.new(0, 10, 0, 90), Color3.new(1, 1, 0.5), function()
     game:GetService("VirtualInputManager"):SendKeyEvent(true, "F9", false, game)
     print("✅ 已打开控制台")
 end)
 
 -- 复活节活动按钮
-createButton("复活节任务板", UDim2.new(1, -130, 0, 130), Color3.new(0.8, 0.2, 0.8), activateEasterBoard)
-createButton("复活节商店", UDim2.new(1, -130, 0, 170), Color3.new(0.8, 0.2, 0.8), activateEasterAngel)
+createButton("复活节任务板", UDim2.new(0, 140, 0, 10), Color3.new(0.8, 0.2, 0.8), activateEasterBoard)
+createButton("复活节商店", UDim2.new(0, 140, 0, 50), Color3.new(0.8, 0.2, 0.8), activateEasterAngel)
 
 -- 蛋狩猎按钮
-local eggHuntButton = createButton("蛋狩猎: 关", UDim2.new(1, -130, 0, 210), Color3.new(0.5, 1, 0.5))
+local eggHuntButton = createButton("半自动蛋狩猎: 关", UDim2.new(0, 140, 0, 90), Color3.new(0.5, 1, 0.5))
 eggHuntButton.MouseButton1Click:Connect(function()
     eggHuntEnabled = not eggHuntEnabled
-    eggHuntButton.Text = "蛋狩猎: "..(eggHuntEnabled and "开" or "关")
+    eggHuntButton.Text = "半自动蛋狩猎: "..(eggHuntEnabled and "开" or "关")
     eggHuntButton.TextColor3 = eggHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,1,0.5)
     if eggHuntEnabled then startEggCollection() else stopEggCollection() end
 end)
 
 -- 半自动外星人按钮
-local alienHuntButton = createButton("半自动外星人: 关", UDim2.new(1, -130, 0, 250), Color3.new(1, 0.5, 0))
+local alienHuntButton = createButton("半自动外星人: 关", UDim2.new(0, 270, 0, 10), Color3.new(1, 0.5, 0))
 alienHuntButton.MouseButton1Click:Connect(function()
     alienHuntEnabled = not alienHuntEnabled
     alienHuntButton.Text = "半自动外星人: "..(alienHuntEnabled and "开" or "关")
@@ -377,8 +454,8 @@ alienHuntButton.MouseButton1Click:Connect(function()
     if alienHuntEnabled then startAlienTeleport() else stopAlienTeleport() end
 end)
 
--- 半自动里德利按钮(包含危险对象移除)
-local ridleyHuntButton = createButton("半自动里德利: 关", UDim2.new(1, -130, 0, 290), Color3.new(0.5, 0.8, 1))
+-- 半自动里德利按钮
+local ridleyHuntButton = createButton("半自动里德利: 关", UDim2.new(0, 270, 0, 50), Color3.new(0.5, 0.8, 1))
 ridleyHuntButton.MouseButton1Click:Connect(function()
     ridleyHuntEnabled = not ridleyHuntEnabled
     ridleyHuntButton.Text = "半自动里德利: "..(ridleyHuntEnabled and "开" or "关")
@@ -386,34 +463,56 @@ ridleyHuntButton.MouseButton1Click:Connect(function()
     if ridleyHuntEnabled then startRidleyTeleport() else stopRidleyTeleport() end
 end)
 
+-- 自动朗克斯按钮
+local lankersHuntButton = createButton("半自动朗克斯: 关", UDim2.new(0, 270, 0, 90), Color3.new(0.8, 0.5, 1))
+lankersHuntButton.MouseButton1Click:Connect(function()
+    lankersHuntEnabled = not lankersHuntEnabled
+    lankersHuntButton.Text = "半自动朗克斯: "..(lankersHuntEnabled and "开" or "关")
+    lankersHuntButton.TextColor3 = lankersHuntEnabled and Color3.new(0,1,0) or Color3.new(0.8,0.5,1)
+    if lankersHuntEnabled then startLankersTeleport() else stopLankersTeleport() end
+end)
+
 -- ===================== UI拖动功能 =====================
 local dragging = false 
 local dragInput 
 local dragStart = nil 
-local startPos = nil 
+local startPositions = {} -- 存储所有按钮的初始位置
+
+-- 初始化记录所有按钮位置
+for _, child in ipairs(screenGui:GetChildren()) do
+    if child:IsA("TextButton") then
+        startPositions[child] = child.Position
+    end
+end
 
 local function updatePos(input) 
+    if not dragStart then return end
+    
     local delta = input.Position - dragStart 
-    hideButton.Position = UDim2.new( 
-        startPos.X.Scale, startPos.X.Offset + delta.X, 
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y 
-    ) 
-    local yOffset = 40 
-    for i, child in ipairs(screenGui:GetChildren()) do 
-        if child:IsA("TextButton") and child ~= hideButton then 
-            child.Position = UDim2.new( 
-                hideButton.Position.X.Scale, hideButton.Position.X.Offset, 
-                hideButton.Position.Y.Scale, hideButton.Position.Y.Offset + yOffset * (i-1) 
-            ) 
-        end 
-    end 
+    
+    -- 更新所有按钮位置
+    for button, startPos in pairs(startPositions) do
+        button.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 end 
 
 hideButton.InputBegan:Connect(function(input) 
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
         dragging = true 
-        dragStart = input.Position 
-        startPos = hideButton.Position 
+        dragStart = input.Position
+        
+        -- 拖动开始时重新记录所有按钮当前位置
+        for _, child in ipairs(screenGui:GetChildren()) do
+            if child:IsA("TextButton") then
+                startPositions[child] = child.Position
+            end
+        end
+        
         input.Changed:Connect(function() 
             if input.UserInputState == Enum.UserInputState.End then 
                 dragging = false 
@@ -454,4 +553,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎、半自动外星人和半自动里德利(含危险对象移除)功能\n- 版本: 1.1.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎、半自动外星人、半自动里德利和自动朗克斯功能\n- 版本: 1.4.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
