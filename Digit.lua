@@ -52,7 +52,7 @@ local function createButton(name, position, color, callback)
     return button
 end
 
--- ===================== 自动朗克斯功能 =====================
+-- ===================== 半自动朗克斯功能 =====================
 local lankersTeleportRunning = false
 local lankersTeleportThread = nil
 
@@ -123,99 +123,77 @@ local function startLankersTeleport()
     coroutine.resume(lankersTeleportThread)
 end
 
--- ===================== 复活节活动功能 =====================
-local function activateEasterBoard()
-    pcall(function()
-        local easterBoard = workspace.Map.Islands["Easter Island"]["Easter Board"]
-        
-        local function findFirstPrompt(parent)
-            for _, child in ipairs(parent:GetDescendants()) do
-                if child:IsA("ProximityPrompt") then
-                    return child
-                end
-            end
-            return nil
-        end
+-- ===================== 半自动坠落星功能 =====================
+local fallingStarTeleportRunning = false
+local fallingStarTeleportThread = nil
 
-        local prompt = findFirstPrompt(easterBoard)
-        if prompt then
-            fireproximityprompt(prompt)
-            print("✅ 已打开复活节任务板")
+local function stopFallingStarTeleport()
+    if fallingStarTeleportRunning then
+        fallingStarTeleportRunning = false
+        if fallingStarTeleportThread then
+            coroutine.close(fallingStarTeleportThread)
+            fallingStarTeleportThread = nil
         end
-    end)
-end
-
-local function activateEasterAngel()
-    pcall(function()
-        local easterAngel = workspace.Map.Islands["Easter Island"]["Easter Angel"]
-        local prompt = easterAngel.HumanoidRootPart.ProximityPrompt
-        if prompt then
-            fireproximityprompt(prompt)
-            print("✅ 已打开复活节商店")
-        end
-    end)
-end
-
--- ===================== Egg收集功能 =====================
-local eggCollectionRunning = false
-local eggCollectionThread = nil
-
-local function stopEggCollection()
-    if eggCollectionRunning then
-        eggCollectionRunning = false
-        if eggCollectionThread then
-            coroutine.close(eggCollectionThread)
-            eggCollectionThread = nil
-        end
-        print("⏹️ 蛋狩猎已停止")
+        print("⏹️ 半自动坠落星已停止")
     end
 end
 
-local function startEggCollection()
-    if eggCollectionRunning then
-        stopEggCollection()
+local function findNearestFallingStar(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local nearestStar = nil
+    local minDistance = math.huge
+    
+    local treasurePiles = workspace:FindFirstChild("TreasurePiles")
+    if treasurePiles then
+        for _, child in ipairs(treasurePiles:GetChildren()) do
+            if child:IsA("Model") then
+                local starLight = child:FindFirstChild("StarLightEffect")
+                if starLight then
+                    local targetPart = starLight:FindFirstChild("HumanoidRootPart") or starLight.PrimaryPart or starLight:FindFirstChildWhichIsA("BasePart")
+                    if targetPart then
+                        local distance = (humanoidRootPart.Position - targetPart.Position).Magnitude
+                        if distance < minDistance then
+                            minDistance = distance
+                            nearestStar = targetPart
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestStar
+end
+
+local function startFallingStarTeleport()
+    if fallingStarTeleportRunning then
+        stopFallingStarTeleport()
         return
     end
     
-    eggCollectionRunning = true
-    
+    fallingStarTeleportRunning = true
     local player = game.Players.LocalPlayer
     
-    eggCollectionThread = coroutine.create(function()
-        while eggCollectionRunning and player do
+    fallingStarTeleportThread = coroutine.create(function()
+        while fallingStarTeleportRunning and player do
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
                 if humanoidRootPart then
-                    local eggs = {}
-                    for _, child in ipairs(workspace:GetChildren()) do
-                        if child.Name == "Egg" and child:IsA("BasePart") then
-                            table.insert(eggs, child)
-                        end
-                    end
-
-                    if #eggs > 0 then
-                        table.sort(eggs, function(a, b)
-                            return a.Position.X < b.Position.X
-                        end)
-
-                        for i, egg in ipairs(eggs) do
-                            if not eggCollectionRunning or not character or not character:FindFirstChild("HumanoidRootPart") then break end
-                            humanoidRootPart.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
-                            print("🚀 传送到蛋 ["..i.."/"..#eggs.."]: "..egg.Name)
-                            task.wait(1)
-                        end
-                    else
-                        task.wait(2)
+                    local nearestStar = findNearestFallingStar(character)
+                    if nearestStar then
+                        humanoidRootPart.CFrame = nearestStar.CFrame + Vector3.new(0, 0, 0)
                     end
                 end
             end
-            task.wait(0.1)
+            task.wait(0.3)
         end
-        eggCollectionRunning = false
-        eggCollectionThread = nil
+        fallingStarTeleportRunning = false
+        fallingStarTeleportThread = nil
     end)
-    coroutine.resume(eggCollectionThread)
+    coroutine.resume(fallingStarTeleportThread)
 end
 
 -- ===================== 外星人传送功能 =====================
@@ -316,7 +294,7 @@ local function stopRidleyTeleport()
             coroutine.close(ridleyTeleportThread)
             ridleyTeleportThread = nil
         end
-        print("⏹️ 里德利传送已停止")
+        print("⏹️ 炸弹传送已停止")
     end
 end
 
@@ -345,7 +323,7 @@ local function removeDangerParts()
             -- 只有当同时包含TouchInterest和Texture时才移除
             if hasTouchInterest and hasTexture then
                 child:Destroy()
-                print("✅ 已移除危险Part: "..child.Name)
+                print("✅ 已移除危险方块: "..child.Name)
             end
         end
     end
@@ -424,29 +402,34 @@ local isHidden = false
 
 createButton("关闭UI", UDim2.new(0, 10, 0, 50), Color3.new(1, 0, 0), function()
     screenGui:Destroy()
-    print("✅ UI已关闭")
+    print("✅ "..gameName.."面板: 关闭")
 end)
 
 createButton("控制台", UDim2.new(0, 10, 0, 90), Color3.new(1, 1, 0.5), function()
-    game:GetService("VirtualInputManager"):SendKeyEvent(true, "F9", false, game)
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F9, false, game)
     print("✅ 已打开控制台")
 end)
 
--- 复活节活动按钮
-createButton("复活节任务板", UDim2.new(0, 140, 0, 10), Color3.new(0.8, 0.2, 0.8), activateEasterBoard)
-createButton("复活节商店", UDim2.new(0, 140, 0, 50), Color3.new(0.8, 0.2, 0.8), activateEasterAngel)
+-- 自动朗克斯按钮
+local lankersHuntButton = createButton("半自动朗克斯: 关", UDim2.new(0, 140, 0, 10), Color3.new(0.8, 0.5, 1))
+lankersHuntButton.MouseButton1Click:Connect(function()
+    lankersHuntEnabled = not lankersHuntEnabled
+    lankersHuntButton.Text = "半自动朗克斯: "..(lankersHuntEnabled and "开" or "关")
+    lankersHuntButton.TextColor3 = lankersHuntEnabled and Color3.new(0,1,0) or Color3.new(0.8,0.5,1)
+    if lankersHuntEnabled then startLankersTeleport() else stopLankersTeleport() end
+end)
 
--- 蛋狩猎按钮
-local eggHuntButton = createButton("半自动蛋狩猎: 关", UDim2.new(0, 140, 0, 90), Color3.new(0.5, 1, 0.5))
-eggHuntButton.MouseButton1Click:Connect(function()
-    eggHuntEnabled = not eggHuntEnabled
-    eggHuntButton.Text = "半自动蛋狩猎: "..(eggHuntEnabled and "开" or "关")
-    eggHuntButton.TextColor3 = eggHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,1,0.5)
-    if eggHuntEnabled then startEggCollection() else stopEggCollection() end
+-- 半自动坠落星按钮 (金色按钮)
+local fallingStarButton = createButton("半自动坠落星: 关", UDim2.new(0, 140, 0, 50), Color3.new(1, 0.84, 0))
+fallingStarButton.MouseButton1Click:Connect(function()
+    fallingStarEnabled = not fallingStarEnabled
+    fallingStarButton.Text = "半自动坠落星: "..(fallingStarEnabled and "开" or "关")
+    fallingStarButton.TextColor3 = fallingStarEnabled and Color3.new(0,1,0) or Color3.new(1,0.84,0)
+    if fallingStarEnabled then startFallingStarTeleport() else stopFallingStarTeleport() end
 end)
 
 -- 半自动外星人按钮
-local alienHuntButton = createButton("半自动外星人: 关", UDim2.new(0, 270, 0, 10), Color3.new(1, 0.5, 0))
+local alienHuntButton = createButton("半自动外星人: 关", UDim2.new(0, 140, 0, 90), Color3.new(1, 0.5, 0))
 alienHuntButton.MouseButton1Click:Connect(function()
     alienHuntEnabled = not alienHuntEnabled
     alienHuntButton.Text = "半自动外星人: "..(alienHuntEnabled and "开" or "关")
@@ -455,21 +438,12 @@ alienHuntButton.MouseButton1Click:Connect(function()
 end)
 
 -- 半自动里德利按钮
-local ridleyHuntButton = createButton("半自动里德利: 关", UDim2.new(0, 270, 0, 50), Color3.new(0.5, 0.8, 1))
+local ridleyHuntButton = createButton("半自动里德利: 关", UDim2.new(0, 140, 0, 130), Color3.new(0.5, 0.8, 1))
 ridleyHuntButton.MouseButton1Click:Connect(function()
     ridleyHuntEnabled = not ridleyHuntEnabled
     ridleyHuntButton.Text = "半自动里德利: "..(ridleyHuntEnabled and "开" or "关")
     ridleyHuntButton.TextColor3 = ridleyHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,0.8,1)
     if ridleyHuntEnabled then startRidleyTeleport() else stopRidleyTeleport() end
-end)
-
--- 自动朗克斯按钮
-local lankersHuntButton = createButton("半自动朗克斯: 关", UDim2.new(0, 270, 0, 90), Color3.new(0.8, 0.5, 1))
-lankersHuntButton.MouseButton1Click:Connect(function()
-    lankersHuntEnabled = not lankersHuntEnabled
-    lankersHuntButton.Text = "半自动朗克斯: "..(lankersHuntEnabled and "开" or "关")
-    lankersHuntButton.TextColor3 = lankersHuntEnabled and Color3.new(0,1,0) or Color3.new(0.8,0.5,1)
-    if lankersHuntEnabled then startLankersTeleport() else stopLankersTeleport() end
 end)
 
 -- ===================== UI拖动功能 =====================
@@ -506,7 +480,6 @@ hideButton.InputBegan:Connect(function(input)
         dragging = true 
         dragStart = input.Position
         
-        -- 拖动开始时重新记录所有按钮当前位置
         for _, child in ipairs(screenGui:GetChildren()) do
             if child:IsA("TextButton") then
                 startPositions[child] = child.Position
@@ -542,7 +515,7 @@ hideButton.MouseButton1Click:Connect(function()
         end
     end
     hideButton.Text = isHidden and "显示UI" or "隐藏UI"
-    print("UI状态:", isHidden and "已隐藏" or "已显示")
+    print("隐藏状态:", isHidden and "F" or "T")
 end)
 
 -- 加载完成通知
@@ -553,4 +526,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含复活节活动、蛋狩猎、半自动外星人、半自动里德利和自动朗克斯功能\n- 版本: 1.4.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含半自动外星人、半自动里德利和自动朗克斯功能\n- 版本: 1.4.2\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
