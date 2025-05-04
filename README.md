@@ -27,7 +27,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 - 脚本简介：**种植花园｜Script**｜购买所有种子及工具
 
 - **更新内容：**
-> 无
+> 自动购买宠物和移除植物部件按钮 - 2025/05/04
 
 - 使用方法：执行即用
 
