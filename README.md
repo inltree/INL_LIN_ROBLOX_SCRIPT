@@ -2,7 +2,23 @@
 - **Lin的Roblox脚本**
  
 - 仓库简介：**Roblox｜Lua**
- 
+
+
+### Script Loader｜Script
+
+```lua
+loadstring(game:HttpGet("https://github.com/InLTree/LinRobloxScript/raw/refs/heads/main/ScriptLoader.lua"))()
+```
+
+- 脚本简介：**脚本加载器｜Script**｜用于加载对应地图脚本！没有对应的脚本则不会加载！
+
+- **更新内容：**
+> 放入自动执行中可自动加载对应脚本控制台查看支持的地图🗺️ - 2025/05/06
+
+- 使用方法：执行即用
+
+- 注意事项：无
+
  ### M.E.G. Endless Reality｜Script
 
 ```lua
@@ -11,10 +27,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 
 - 脚本简介：**M.E.G. 无尽现实｜Script**｜高亮任务目标及实体显示和电梯传送
 
-- 使用方法：执行即用，配合飞行更佳
-
 - **更新内容：**
-> 无
+> 并未恢复更新，只是更改脚本命名 - 2025/05/06
+
+- 使用方法：执行即用，配合飞行更佳
 
 - 注意事项：由于脚本暂停更新部分可能失效
 
@@ -28,9 +44,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 
 - **更新内容：**
 > 自动购买宠物和移除植物部件按钮 - 2025/05/04
+> 优化自动购买如没有更新时游戏作者更新了新种子或工具可以进行购买！！！ - 2025/05/06
 
 - 使用方法：执行即用
-
+ 
 - 注意事项：无
 
 ### Dig it｜Script
