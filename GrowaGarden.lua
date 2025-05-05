@@ -3,6 +3,12 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- 声明自动购买控制变量
+local autoSeedsEnabled = false
+local autoToolsEnabled = false
+local autoPetsEnabled = false
 
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
@@ -116,6 +122,122 @@ local function ProcessFarmWithFeedback()
     print(string.format("✅ 已移除 %d 植物部件", totalRemoved))
 end
 
+-- ===================== 种子自动购买功能 =====================
+local SEED_RARITY_ORDER = {
+    ["Divine"] = 6,
+    ["Mythical"] = 5,
+    ["Legendary"] = 4,
+    ["Rare"] = 3,
+    ["Uncommon"] = 2,
+    ["Common"] = 1
+}
+
+local function getSeedShopFrame()
+    return Players.LocalPlayer.PlayerGui:WaitForChild("Seed_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
+end
+
+local function getSortedSeeds()
+    local seeds = {}
+    local scrollingFrame = getSeedShopFrame()
+    
+    for _, seedFrame in ipairs(scrollingFrame:GetChildren()) do
+        local rarityText = seedFrame:FindFirstChild("Main_Frame") and seedFrame.Main_Frame:FindFirstChild("Rarity_Text")
+        if rarityText then
+            table.insert(seeds, {
+                name = seedFrame.Name,
+                rarity = rarityText.Text,
+                level = SEED_RARITY_ORDER[rarityText.Text] or 0
+            })
+        end
+    end
+    
+    table.sort(seeds, function(a, b)
+        return a.level > b.level  -- 按稀有度降序排列
+    end)
+    
+    return seeds
+end
+
+local function purchaseSeedsSequentially(seeds, index)
+    if not autoSeedsEnabled or not seeds[index] then return end
+    
+    -- 发送种子购买请求
+    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(seeds[index].name)
+    
+    -- 0.1秒后购买下一个种子
+    task.delay(0.1, function()
+        purchaseSeedsSequentially(seeds, index + 1)
+    end)
+end
+
+local function autoPurchaseSeedsByRarity()
+    while autoSeedsEnabled do
+        local sortedSeeds = getSortedSeeds()
+        if #sortedSeeds > 0 then
+            purchaseSeedsSequentially(sortedSeeds, 1)
+        end
+        task.wait(0.1) -- 每次完整购买循环后等待1秒
+    end
+end
+
+-- ===================== 工具自动购买功能 =====================
+local GEARS_RARITY_ORDER = {
+    ["Divine"] = 6,
+    ["Mythical"] = 5,
+    ["Legendary"] = 4,
+    ["Rare"] = 3,
+    ["Uncommon"] = 2,
+    ["Common"] = 1
+}
+
+local function getGearShopFrame()
+    return Players.LocalPlayer.PlayerGui:WaitForChild("Gear_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
+end
+
+local function getSortedGears()
+    local gears = {}
+    local scrollingFrame = getGearShopFrame()
+    
+    for _, gearFrame in ipairs(scrollingFrame:GetChildren()) do
+        local rarityText = gearFrame:FindFirstChild("Main_Frame") and gearFrame.Main_Frame:FindFirstChild("Rarity_Text")
+        if rarityText then
+            table.insert(gears, {
+                name = gearFrame.Name,
+                rarity = rarityText.Text,
+                level = GEARS_RARITY_ORDER[rarityText.Text] or 0
+            })
+        end
+    end
+    
+    table.sort(gears, function(a, b)
+        return a.level > b.level  -- 降序排列
+    end)
+    
+    return gears
+end
+
+local function purchaseGearsSequentially(gears, index)
+    if not autoToolsEnabled or not gears[index] then return end
+    
+    -- 发送工具购买请求
+    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(gears[index].name)
+    
+    -- 延迟后购买下一个（0.1秒间隔）
+    task.delay(0.1, function()
+        purchaseGearsSequentially(gears, index + 1)
+    end)
+end
+
+local function autoPurchaseGearsByRarity()
+    while autoToolsEnabled do
+        local sortedGears = getSortedGears()
+        if #sortedGears > 0 then
+            purchaseGearsSequentially(sortedGears, 1)
+        end
+        task.wait(0.11)
+    end
+end
+
 -- ===================== 创建按钮 =====================
 local hideButton = createButton("隐藏UI", UDim2.new(0, 10, 0, 10), Color3.new(1, 0.5, 0))
 local isHidden = false
@@ -131,17 +253,15 @@ createButton("控制台", UDim2.new(0, 10, 0, 90), Color3.new(1, 1, 0.5), functi
 end)
 
 -- 工具商店按钮
-createButton("工具商店", UDim2.new(0, 270, 0, 10), Color3.new(0, 1, 1), function()
+createButton("工具商店传送", UDim2.new(0, 270, 0, 10), Color3.new(0, 1, 1), function()
     local character = game.Players.LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
-        -- 传送到教程点3
         character.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_3.CFrame
-        print("✅ 工具商店: 已点击")
+        print("✅ 工具商店传送: 已点击")
     end
 end)
 
--- 自动购买种子功能
-local autoSeedsEnabled = false
+-- 自动种子功能
 local autoSeedsButton = createButton("自动种子: 关", UDim2.new(0, 140, 0, 10), Color3.new(0.5, 1, 0.5))
 
 autoSeedsButton.MouseButton1Click:Connect(function()
@@ -151,33 +271,11 @@ autoSeedsButton.MouseButton1Click:Connect(function()
     print("✅ 自动种子: " .. (autoSeedsEnabled and "已开启" or "已关闭"))
     
     if autoSeedsEnabled then
-        spawn(function()
-            while autoSeedsEnabled do
-                local seedTypes = {
-                    "Pepper", "Mushroom", "Grape", "Mango", "Dragon Fruit", "Cactus",
-                    "Coconut", "Bamboo", "Apple", "Pumpkin", "Watermelon",
-                    "Daffodil", "Corn", "Tomato", "Orange Tulip", "Blueberry",
-                    "Strawberry", "Carrot"
-                }
-
-                local buyEvent = game:GetService("ReplicatedStorage")
-                    :WaitForChild("GameEvents")
-                    :WaitForChild("BuySeedStock")
-
-                for _, seed in ipairs(seedTypes) do
-                    if not autoSeedsEnabled then break end
-                    buyEvent:FireServer(seed)
-                    task.wait(0.1)
-                end
-                
-                task.wait(0.1)
-            end
-        end)
+        spawn(autoPurchaseSeedsByRarity)
     end
 end)
 
--- 自动购买工具功能
-local autoToolsEnabled = false
+-- 自动工具功能
 local autoToolsButton = createButton("自动工具: 关", UDim2.new(0, 140, 0, 50), Color3.new(0.5, 0.5, 1))
 
 autoToolsButton.MouseButton1Click:Connect(function()
@@ -187,31 +285,11 @@ autoToolsButton.MouseButton1Click:Connect(function()
     print("✅ 自动工具: " .. (autoToolsEnabled and "已开启" or "已关闭"))
     
     if autoToolsEnabled then
-        spawn(function()
-            while autoToolsEnabled do
-                local gearList = {
-                    "Master Sprinkler", "Lightning Rod", "Godly Sprinkler",
-                    "Advanced Sprinkler", "Basic Sprinkler", "Trowel", "Watering Can"
-                }
-
-                local buyEvent = game:GetService("ReplicatedStorage")
-                    :WaitForChild("GameEvents")
-                    :WaitForChild("BuyGearStock")
-
-                for _, gear in ipairs(gearList) do
-                    if not autoToolsEnabled then break end
-                    buyEvent:FireServer(gear)
-                    task.wait(0.1)
-                end
-                
-                task.wait(0.1)
-            end
-        end)
+        spawn(autoPurchaseGearsByRarity)
     end
 end)
 
--- 自动购买宠物功能
-local autoPetsEnabled = false
+-- 自动宠物功能
 local autoPetsButton = createButton("自动宠物: 关", UDim2.new(0, 140, 0, 90), Color3.new(1, 0.5, 1))
 
 autoPetsButton.MouseButton1Click:Connect(function()
@@ -223,9 +301,7 @@ autoPetsButton.MouseButton1Click:Connect(function()
     if autoPetsEnabled then
         spawn(function()
             while autoPetsEnabled do
-                local buyEvent = game:GetService("ReplicatedStorage")
-                    :WaitForChild("GameEvents")
-                    :WaitForChild("BuyPetEgg")
+                local buyEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg")
 
                 for i = 1, 3 do
                     if not autoPetsEnabled then break end
@@ -241,6 +317,39 @@ end)
 
 -- 移除植物部件按钮
 createButton("移除植物部件", UDim2.new(0, 270, 0, 50), Color3.new(1, 0.3, 0.3), ProcessFarmWithFeedback)
+
+-- 界面获取按钮
+createButton("种子界面", UDim2.new(0, 270, 0, 90), Color3.new(0.5, 1, 0.5), function()
+    local seedShop = player.PlayerGui:FindFirstChild("Seed_Shop")
+    if seedShop then
+        seedShop.Enabled = not seedShop.Enabled
+        print("✅ 种子界面: " .. (seedShop.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+createButton("工具界面", UDim2.new(0, 270, 0, 130), Color3.new(0.5, 0.5, 1), function()
+    local gearShop = player.PlayerGui:FindFirstChild("Gear_Shop")
+    if gearShop then
+        gearShop.Enabled = not gearShop.Enabled
+        print("✅ 工具界面: " .. (gearShop.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+createButton("任务界面", UDim2.new(0, 270, 0, 170), Color3.new(1, 0.5, 0.5), function()
+    local dailyQuestsUI = player.PlayerGui:FindFirstChild("DailyQuests_UI")
+    if dailyQuestsUI then
+        dailyQuestsUI.Enabled = not dailyQuestsUI.Enabled
+        print("✅ 任务界面: " .. (dailyQuestsUI.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+createButton("复活节界面", UDim2.new(0, 400, 0, 10), Color3.new(1, 1, 0), function()
+    local easterShop = player.PlayerGui:FindFirstChild("Easter_Shop")
+    if easterShop then
+        easterShop.Enabled = not easterShop.Enabled
+        print("✅ 复活节界面: " .. (easterShop.Enabled and "已开启" or "已关闭"))
+    end
+end)
 
 -- ===================== UI拖动功能 =====================
 local dragging = false 
@@ -320,4 +429,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜提前是钱够了添加自动购买宠物，移除植物部件更好的采摘果实\n- 版本: 1.0.2\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜提前是钱够了添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.3\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
