@@ -9,6 +9,7 @@ local player = Players.LocalPlayer
 local autoSeedsEnabled = false
 local autoToolsEnabled = false
 local autoPetsEnabled = false
+local autoEventItemsEnabled = false
 
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
@@ -124,6 +125,7 @@ end
 
 -- ===================== 种子自动购买功能 =====================
 local SEED_RARITY_ORDER = {
+    ["Prismatic"] = 7,
     ["Divine"] = 6,
     ["Mythical"] = 5,
     ["Legendary"] = 4,
@@ -182,6 +184,7 @@ end
 
 -- ===================== 工具自动购买功能 =====================
 local GEARS_RARITY_ORDER = {
+    ["Prismatic"] = 7,
     ["Divine"] = 6,
     ["Mythical"] = 5,
     ["Legendary"] = 4,
@@ -233,6 +236,74 @@ local function autoPurchaseGearsByRarity()
         local sortedGears = getSortedGears()
         if #sortedGears > 0 then
             purchaseGearsSequentially(sortedGears, 1)
+        end
+        task.wait(0.11)
+    end
+end
+
+-- ===================== 活动物品自动购买功能 =====================
+local EVENT_ITEMS_RARITY_ORDER = {
+    ["Prismatic"] = 7,
+    ["Divine"] = 6,
+    ["Mythical"] = 5,
+    ["Legendary"] = 4,
+    ["Rare"] = 3,
+    ["Uncommon"] = 2,
+    ["Common"] = 1
+}
+
+local function getEventShopFrame()
+    local eventShopUI = player.PlayerGui:FindFirstChild("EventShop_UI")
+    if eventShopUI then
+        return eventShopUI:WaitForChild("Frame"):WaitForChild("ScrollingFrame")
+    end
+    return nil
+end
+
+local function getSortedEventItems()
+    local eventItems = {}
+    local scrollingFrame = getEventShopFrame()
+    
+    if scrollingFrame then
+        for _, itemFrame in ipairs(scrollingFrame:GetChildren()) do
+            local rarityText = itemFrame:FindFirstChild("Main_Frame") and itemFrame.Main_Frame:FindFirstChild("Rarity_Text")
+            if rarityText then
+                table.insert(eventItems, {
+                    name = itemFrame.Name,
+                    rarity = rarityText.Text,
+                    level = EVENT_ITEMS_RARITY_ORDER[rarityText.Text] or 0
+                })
+            end
+        end
+        
+        table.sort(eventItems, function(a, b)
+            return a.level > b.level  -- 降序排列
+        end)
+    end
+    
+    return eventItems
+end
+
+local function purchaseEventItemsSequentially(items, index)
+    if not autoEventItemsEnabled or not items[index] then return end
+    
+    -- 发送活动物品购买请求
+    local args = {
+        items[index].name
+    }
+    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
+    
+    -- 延迟后购买下一个（0.1秒间隔）
+    task.delay(0.1, function()
+        purchaseEventItemsSequentially(items, index + 1)
+    end)
+end
+
+local function autoPurchaseEventItemsByRarity()
+    while autoEventItemsEnabled do
+        local sortedItems = getSortedEventItems()
+        if #sortedItems > 0 then
+            purchaseEventItemsSequentially(sortedItems, 1)
         end
         task.wait(0.11)
     end
@@ -315,6 +386,20 @@ autoPetsButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- 自动活动物品功能
+local autoEventItemsButton = createButton("自动活动物品: 关", UDim2.new(0, 140, 0, 130), Color3.new(1, 0.8, 0.4))
+
+autoEventItemsButton.MouseButton1Click:Connect(function()
+    autoEventItemsEnabled = not autoEventItemsEnabled
+    autoEventItemsButton.Text = "自动活动物品: " .. (autoEventItemsEnabled and "开" or "关")
+    autoEventItemsButton.TextColor3 = autoEventItemsEnabled and Color3.new(1, 0.6, 0) or Color3.new(1, 0.8, 0.4)
+    print("✅ 自动活动物品: " .. (autoEventItemsEnabled and "已开启" or "已关闭"))
+    
+    if autoEventItemsEnabled then
+        spawn(autoPurchaseEventItemsByRarity)
+    end
+end)
+
 -- 移除植物部件按钮
 createButton("移除植物部件", UDim2.new(0, 270, 0, 50), Color3.new(1, 0.3, 0.3), ProcessFarmWithFeedback)
 
@@ -343,11 +428,12 @@ createButton("任务界面", UDim2.new(0, 270, 0, 170), Color3.new(1, 0.5, 0.5),
     end
 end)
 
-createButton("复活节界面", UDim2.new(0, 400, 0, 10), Color3.new(1, 1, 0), function()
-    local easterShop = player.PlayerGui:FindFirstChild("Easter_Shop")
-    if easterShop then
-        easterShop.Enabled = not easterShop.Enabled
-        print("✅ 复活节界面: " .. (easterShop.Enabled and "已开启" or "已关闭"))
+-- 活动商店界面按钮
+createButton("活动商店界面", UDim2.new(0, 400, 0, 10), Color3.new(1, 1, 0), function()
+    local eventShop = player.PlayerGui:FindFirstChild("EventShop_UI")
+    if eventShop then
+        eventShop.Enabled = not eventShop.Enabled
+        print("✅ 活动商店界面: " .. (eventShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
@@ -429,4 +515,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜提前是钱够了添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.3\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜提前是钱够了添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.5\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
