@@ -59,6 +59,31 @@ local function createButton(name, position, color, callback)
     return button
 end
 
+-- ===================== 获取玩家谢克尔数量 =====================
+local function getPlayerSheckles()
+    local shecklesUI = player.PlayerGui:FindFirstChild("Sheckles_UI")
+    if shecklesUI and shecklesUI:FindFirstChild("TextLabel") then
+        local shecklesText = shecklesUI.TextLabel.Text
+        -- 提取数字部分 (例如: "1,234" -> 1234)
+        local numericValue = string.gsub(shecklesText, "[^%d]", "")
+        return tonumber(numericValue) or 0
+    end
+    return 0
+end
+
+-- ===================== 获取物品价格 =====================
+local function getItemCost(frame)
+    if frame and frame:FindFirstChild("Main_Frame") then
+        local costText = frame.Main_Frame:FindFirstChild("Cost_Text")
+        if costText and costText.Text ~= "NO STOCK" then
+            -- 提取数字部分 (例如: "1,234" -> 1234)
+            local numericValue = string.gsub(costText.Text, "[^%d]", "")
+            return tonumber(numericValue) or 0
+        end
+    end
+    return 0
+end
+
 -- ===================== 移除植物部件功能 =====================
 local totalRemoved = 0
 
@@ -138,22 +163,39 @@ local function getSeedShopFrame()
     return Players.LocalPlayer.PlayerGui:WaitForChild("Seed_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
 end
 
+local function isSeedInStock(seedName)
+    local seedFrame = getSeedShopFrame():FindFirstChild(seedName)
+    if seedFrame then
+        local costText = seedFrame:FindFirstChild("Main_Frame") and seedFrame.Main_Frame:FindFirstChild("Cost_Text")
+        if costText and costText.Text ~= "NO STOCK" then
+            local playerSheckles = getPlayerSheckles()
+            local itemCost = getItemCost(seedFrame)
+            return playerSheckles >= itemCost
+        end
+    end
+    return false
+end
+
 local function getSortedSeeds()
     local seeds = {}
     local scrollingFrame = getSeedShopFrame()
     
     for _, seedFrame in ipairs(scrollingFrame:GetChildren()) do
         local rarityText = seedFrame:FindFirstChild("Main_Frame") and seedFrame.Main_Frame:FindFirstChild("Rarity_Text")
-        if rarityText then
+        if rarityText and isSeedInStock(seedFrame.Name) then
             table.insert(seeds, {
                 name = seedFrame.Name,
                 rarity = rarityText.Text,
-                level = SEED_RARITY_ORDER[rarityText.Text] or 0
+                level = SEED_RARITY_ORDER[rarityText.Text] or 0,
+                cost = getItemCost(seedFrame)
             })
         end
     end
     
     table.sort(seeds, function(a, b)
+        if a.level == b.level then
+            return a.cost < b.cost  -- 相同稀有度时选择更便宜的
+        end
         return a.level > b.level  -- 按稀有度降序排列
     end)
     
@@ -163,8 +205,11 @@ end
 local function purchaseSeedsSequentially(seeds, index)
     if not autoSeedsEnabled or not seeds[index] then return end
     
-    -- 发送种子购买请求
-    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(seeds[index].name)
+    -- 检查库存状态和玩家资金
+    if isSeedInStock(seeds[index].name) then
+        -- 发送种子购买请求
+        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(seeds[index].name)
+    end
     
     -- 0.1秒后购买下一个种子
     task.delay(0.1, function()
@@ -178,7 +223,7 @@ local function autoPurchaseSeedsByRarity()
         if #sortedSeeds > 0 then
             purchaseSeedsSequentially(sortedSeeds, 1)
         end
-        task.wait(0.1) -- 每次完整购买循环后等待1秒
+        task.wait(0.1) -- 每次完整购买循环后等待0.1秒
     end
 end
 
@@ -197,22 +242,39 @@ local function getGearShopFrame()
     return Players.LocalPlayer.PlayerGui:WaitForChild("Gear_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
 end
 
+local function isGearInStock(gearName)
+    local gearFrame = getGearShopFrame():FindFirstChild(gearName)
+    if gearFrame then
+        local costText = gearFrame:FindFirstChild("Main_Frame") and gearFrame.Main_Frame:FindFirstChild("Cost_Text")
+        if costText and costText.Text ~= "NO STOCK" then
+            local playerSheckles = getPlayerSheckles()
+            local itemCost = getItemCost(gearFrame)
+            return playerSheckles >= itemCost
+        end
+    end
+    return false
+end
+
 local function getSortedGears()
     local gears = {}
     local scrollingFrame = getGearShopFrame()
     
     for _, gearFrame in ipairs(scrollingFrame:GetChildren()) do
         local rarityText = gearFrame:FindFirstChild("Main_Frame") and gearFrame.Main_Frame:FindFirstChild("Rarity_Text")
-        if rarityText then
+        if rarityText and isGearInStock(gearFrame.Name) then
             table.insert(gears, {
                 name = gearFrame.Name,
                 rarity = rarityText.Text,
-                level = GEARS_RARITY_ORDER[rarityText.Text] or 0
+                level = GEARS_RARITY_ORDER[rarityText.Text] or 0,
+                cost = getItemCost(gearFrame)
             })
         end
     end
     
     table.sort(gears, function(a, b)
+        if a.level == b.level then
+            return a.cost < b.cost  -- 相同稀有度时选择更便宜的
+        end
         return a.level > b.level  -- 降序排列
     end)
     
@@ -222,8 +284,11 @@ end
 local function purchaseGearsSequentially(gears, index)
     if not autoToolsEnabled or not gears[index] then return end
     
-    -- 发送工具购买请求
-    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(gears[index].name)
+    -- 检查库存状态和玩家资金
+    if isGearInStock(gears[index].name) then
+        -- 发送工具购买请求
+        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(gears[index].name)
+    end
     
     -- 延迟后购买下一个（0.1秒间隔）
     task.delay(0.1, function()
@@ -260,6 +325,19 @@ local function getEventShopFrame()
     return nil
 end
 
+local function isEventItemInStock(itemName)
+    local itemFrame = getEventShopFrame():FindFirstChild(itemName)
+    if itemFrame then
+        local costText = itemFrame:FindFirstChild("Main_Frame") and itemFrame.Main_Frame:FindFirstChild("Cost_Text")
+        if costText and costText.Text ~= "NO STOCK" then
+            local playerSheckles = getPlayerSheckles()
+            local itemCost = getItemCost(itemFrame)
+            return playerSheckles >= itemCost
+        end
+    end
+    return false
+end
+
 local function getSortedEventItems()
     local eventItems = {}
     local scrollingFrame = getEventShopFrame()
@@ -267,16 +345,20 @@ local function getSortedEventItems()
     if scrollingFrame then
         for _, itemFrame in ipairs(scrollingFrame:GetChildren()) do
             local rarityText = itemFrame:FindFirstChild("Main_Frame") and itemFrame.Main_Frame:FindFirstChild("Rarity_Text")
-            if rarityText then
+            if rarityText and isEventItemInStock(itemFrame.Name) then
                 table.insert(eventItems, {
                     name = itemFrame.Name,
                     rarity = rarityText.Text,
-                    level = EVENT_ITEMS_RARITY_ORDER[rarityText.Text] or 0
+                    level = EVENT_ITEMS_RARITY_ORDER[rarityText.Text] or 0,
+                    cost = getItemCost(itemFrame)
                 })
             end
         end
         
         table.sort(eventItems, function(a, b)
+            if a.level == b.level then
+                return a.cost < b.cost  -- 相同稀有度时选择更便宜的
+            end
             return a.level > b.level  -- 降序排列
         end)
     end
@@ -287,11 +369,14 @@ end
 local function purchaseEventItemsSequentially(items, index)
     if not autoEventItemsEnabled or not items[index] then return end
     
-    -- 发送活动物品购买请求
-    local args = {
-        items[index].name
-    }
-    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
+    -- 检查库存状态和玩家资金
+    if isEventItemInStock(items[index].name) then
+        -- 发送活动物品购买请求
+        local args = {
+            items[index].name
+        }
+        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
+    end
     
     -- 延迟后购买下一个（0.1秒间隔）
     task.delay(0.1, function()
@@ -420,7 +505,16 @@ createButton("工具界面", UDim2.new(0, 270, 0, 130), Color3.new(0.5, 0.5, 1),
     end
 end)
 
-createButton("任务界面", UDim2.new(0, 270, 0, 170), Color3.new(1, 0.5, 0.5), function()
+-- 装饰品界面按钮
+createButton("装饰品界面", UDim2.new(0, 270, 0, 170), Color3.new(0.4, 1, 0.8), function()
+    local cosmeticShopUI = player.PlayerGui:FindFirstChild("CosmeticShop_UI")
+    if cosmeticShopUI then
+        cosmeticShopUI.Enabled = not cosmeticShopUI.Enabled
+        print("✅ 装饰品界面: " .. (cosmeticShopUI.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+createButton("任务界面", UDim2.new(0, 270, 0, 210), Color3.new(1, 0.5, 0.5), function()
     local dailyQuestsUI = player.PlayerGui:FindFirstChild("DailyQuests_UI")
     if dailyQuestsUI then
         dailyQuestsUI.Enabled = not dailyQuestsUI.Enabled
@@ -428,12 +522,30 @@ createButton("任务界面", UDim2.new(0, 270, 0, 170), Color3.new(1, 0.5, 0.5),
     end
 end)
 
+-- 启动包界面按钮
+createButton("启动包界面", UDim2.new(0, 400, 0, 10), Color3.new(0.8, 0.4, 1), function()
+    local starterPackUI = player.PlayerGui:FindFirstChild("StarterPack_UI")
+    if starterPackUI then
+        starterPackUI.Enabled = not starterPackUI.Enabled
+        print("✅ 启动包界面: " .. (starterPackUI.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
 -- 活动商店界面按钮
-createButton("活动商店界面", UDim2.new(0, 400, 0, 10), Color3.new(1, 1, 0), function()
+createButton("活动商店界面", UDim2.new(0, 400, 0, 50), Color3.new(1, 1, 0), function()
     local eventShop = player.PlayerGui:FindFirstChild("EventShop_UI")
     if eventShop then
         eventShop.Enabled = not eventShop.Enabled
         print("✅ 活动商店界面: " .. (eventShop.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+-- 蜂蜜商店界面按钮
+createButton("蜂蜜商店界面", UDim2.new(0, 400, 0, 90), Color3.new(1, 0.8, 0.4), function()
+    local honeyEventShopUI = player.PlayerGui:FindFirstChild("HoneyEventShop_UI")
+    if honeyEventShopUI then
+        honeyEventShopUI.Enabled = not honeyEventShopUI.Enabled
+        print("✅ 蜂蜜商店界面: " .. (honeyEventShopUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
@@ -515,4 +627,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜提前是钱够了添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.5\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.7\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
