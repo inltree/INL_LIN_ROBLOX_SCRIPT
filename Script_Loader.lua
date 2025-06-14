@@ -10,15 +10,15 @@ local GAME_CONFIG = {
     },
     [126884695634066] = {
         name = "种植花园｜(Grow a Garden)",
-        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/main/GrowaGarden.lua"
+        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/main/Grow_a_Garden.lua"
     },
     [76455837887178] = {
         name = "挖掘它｜(Dig it)",
-        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/Digit.lua"
+        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/Dig_it.lua"
     },
     [98629859043211] = {
         name = "M.E.G.无尽现实｜(M.E.G. Endless Reality)", 
-        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/M.E.G.EndlessReality.lua"
+        scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/M.E.G._Endless_Reality.lua"
     }
     
 }
@@ -34,7 +34,7 @@ warn("\n"..(("="):rep(40).."\n- 游戏名称: "..gameName.."\n- 描述: inltree�
 StarterGui:SetCore("SendNotification", {
     Title = gameName,
     Text = "inltree｜"..gameName.." Script Loading...｜加载中...",
-    Duration = 3
+    Duration = 1
 })
 
 -- 检查游戏支持
@@ -62,7 +62,7 @@ if scriptConfig then
         StarterGui:SetCore("SendNotification", {
             Title = gameName,
             Text = scriptConfig.name.."｜加载完成",
-            Duration = 3
+            Duration = 1
         })
     else
         warn("脚本加载失败: ", err)
