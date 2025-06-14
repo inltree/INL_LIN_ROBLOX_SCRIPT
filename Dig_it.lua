@@ -3,6 +3,17 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+-- 全局状态变量
+local autoSliderEnabled = false
+local autoDigEnabled = false
+local autoCreatePileEnabled = false
+local lankersHuntEnabled = false
+local fallingStarEnabled = false
+local alienHuntEnabled = false
+local ridleyHuntEnabled = false
 
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
@@ -20,7 +31,7 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-task.wait(5)
+task.wait(0.1)
 
 -- 按钮样式配置
 local buttonStyle = {
@@ -52,6 +63,203 @@ local function createButton(name, position, color, callback)
     return button
 end
 
+-- ===================== 自动滑块功能 =====================
+local autoSliderRunning = false
+local autoSliderConnection = nil
+
+local function stopAutoSlider()
+    if autoSliderRunning then
+        autoSliderRunning = false
+        if autoSliderConnection then
+            autoSliderConnection:Disconnect()
+            autoSliderConnection = nil
+        end
+    end
+end
+
+local function startAutoSlider()
+    if autoSliderRunning then
+        stopAutoSlider()
+        return
+    end
+    
+    autoSliderRunning = true
+    
+    local function alignCursorToArea(cursor, area)
+        if not cursor or not area then return false end
+        
+        local success, areaCenterX = pcall(function()
+            local areaSize = area.AbsoluteSize
+            local areaPos = area.AbsolutePosition
+            return areaPos.X + (areaSize.X / 2)
+        end)
+        if not success then return false end
+        
+        local success2, cursorCenterX = pcall(function()
+            local cursorSize = cursor.AbsoluteSize
+            local cursorPos = cursor.AbsolutePosition
+            return cursorPos.X + (cursorSize.X / 2)
+        end)
+        if not success2 then return false end
+        
+        local deltaX = areaCenterX - cursorCenterX
+        
+        -- 如果误差小于1像素，不再调整
+        if math.abs(deltaX) < 1 then
+            return true
+        end
+        
+        -- 更新Cursor位置（保持Y不变）
+        pcall(function()
+            cursor.Position = UDim2.new(
+                cursor.Position.X.Scale,
+                cursor.Position.X.Offset + deltaX,
+                cursor.Position.Y.Scale,
+                cursor.Position.Y.Offset
+            )
+        end)
+        return true
+    end
+    
+    -- 使用RunService逐帧检查并执行
+    autoSliderConnection = RunService.Heartbeat:Connect(function()
+        if not autoSliderEnabled then return end
+        
+        local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+        local main = playerGui:FindFirstChild("Main")
+        if not main then return end
+        
+        local digMinigame = main:FindFirstChild("DigMinigame")
+        if not digMinigame then return end
+        
+        local cursor = digMinigame:FindFirstChild("Cursor")
+        local area = digMinigame:FindFirstChild("Area")
+        if not cursor or not area then return end
+        
+        -- 尝试对齐滑块
+        alignCursorToArea(cursor, area)
+    end)
+end
+
+-- ===================== 自动挖掘功能 =====================
+local autoDigRunning = false
+local autoDigThread = nil
+
+local function getNearestPile(character)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    local treasurePiles = Workspace:FindFirstChild("TreasurePiles")
+    if not treasurePiles then return nil end
+    
+    local nearestPile = nil
+    local minDistance = 15
+    
+    for _, pile in ipairs(treasurePiles:GetChildren()) do
+        local primaryPart = pile:FindFirstChild("DigTarget") or pile:FindFirstChildWhichIsA("BasePart")
+        if primaryPart then
+            local distance = (humanoidRootPart.Position - primaryPart.Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearestPile = pile
+            end
+        end
+    end
+    
+    return nearestPile
+end
+
+local function stopAutoDig()
+    if autoDigRunning then
+        autoDigRunning = false
+        if autoDigThread then
+            coroutine.close(autoDigThread)
+            autoDigThread = nil
+        end
+    end
+end
+
+local function startAutoDig()
+    if autoDigRunning then
+        stopAutoDig()
+        return
+    end
+    
+    autoDigRunning = true
+    
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local diggingRemote = ReplicatedStorage:WaitForChild("Source"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("Digging")
+    
+    autoDigThread = coroutine.create(function()
+        while autoDigRunning and autoDigEnabled do
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local nearestPile = getNearestPile(character)
+                if nearestPile then
+                    pcall(function()
+                        local args = {
+                            {
+                                Command = "DigPile",
+                                TargetPileIndex = tonumber(nearestPile.Name) or nearestPile.Name
+                            }
+                        }
+                        diggingRemote:InvokeServer(unpack(args))
+                    end)
+                    task.wait(0.1)
+                else
+                    task.wait(0.5)
+                end
+            else
+                character = player.Character or player.CharacterAdded:Wait()
+                task.wait(1)
+            end
+        end
+        autoDigRunning = false
+    end)
+    coroutine.resume(autoDigThread)
+end
+
+-- ===================== 自动创建堆功能 =====================
+local autoCreatePileRunning = false
+local autoCreatePileThread = nil
+
+local function stopAutoCreatePile()
+    if autoCreatePileRunning then
+        autoCreatePileRunning = false
+        if autoCreatePileThread then
+            coroutine.close(autoCreatePileThread)
+            autoCreatePileThread = nil
+        end
+    end
+end
+
+local function startAutoCreatePile()
+    if autoCreatePileRunning then
+        stopAutoCreatePile()
+        return
+    end
+    
+    autoCreatePileRunning = true
+    
+    local DiggingRemote = ReplicatedStorage:WaitForChild("Source"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("Digging")
+    
+    autoCreatePileThread = coroutine.create(function()
+        while autoCreatePileRunning and autoCreatePileEnabled do
+            pcall(function()
+                local args = {
+                    {
+                        Command = "CreatePile"
+                    }
+                }
+                DiggingRemote:InvokeServer(unpack(args))
+            end)
+            task.wait(0.2)
+        end
+        autoCreatePileRunning = false
+    end)
+    coroutine.resume(autoCreatePileThread)
+end
+
 -- ===================== 半自动朗克斯功能 =====================
 local lankersTeleportRunning = false
 local lankersTeleportThread = nil
@@ -63,7 +271,6 @@ local function stopLankersTeleport()
             coroutine.close(lankersTeleportThread)
             lankersTeleportThread = nil
         end
-        print("⏹️ 自动朗克斯已停止")
     end
 end
 
@@ -74,7 +281,6 @@ local function findNearestLankers(character)
     local nearestLankers = nil
     local minDistance = math.huge
     
-    -- 检查_Effects文件夹下的所有Model
     local effectsFolder = workspace:FindFirstChild("_Effects")
     if effectsFolder then
         for _, child in ipairs(effectsFolder:GetChildren()) do
@@ -104,7 +310,7 @@ local function startLankersTeleport()
     local player = game.Players.LocalPlayer
     
     lankersTeleportThread = coroutine.create(function()
-        while lankersTeleportRunning and player do
+        while lankersTeleportRunning and lankersHuntEnabled do
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -118,7 +324,6 @@ local function startLankersTeleport()
             task.wait(0.3)
         end
         lankersTeleportRunning = false
-        lankersTeleportThread = nil
     end)
     coroutine.resume(lankersTeleportThread)
 end
@@ -134,7 +339,6 @@ local function stopFallingStarTeleport()
             coroutine.close(fallingStarTeleportThread)
             fallingStarTeleportThread = nil
         end
-        print("⏹️ 半自动坠落星已停止")
     end
 end
 
@@ -177,7 +381,7 @@ local function startFallingStarTeleport()
     local player = game.Players.LocalPlayer
     
     fallingStarTeleportThread = coroutine.create(function()
-        while fallingStarTeleportRunning and player do
+        while fallingStarTeleportRunning and fallingStarEnabled do
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -191,7 +395,6 @@ local function startFallingStarTeleport()
             task.wait(0.3)
         end
         fallingStarTeleportRunning = false
-        fallingStarTeleportThread = nil
     end)
     coroutine.resume(fallingStarTeleportThread)
 end
@@ -211,7 +414,6 @@ local function stopAlienTeleport()
             coroutine.close(alienTeleportThread)
             alienTeleportThread = nil
         end
-        print("⏹️ 外星人传送已停止")
     end
 end
 
@@ -219,7 +421,7 @@ local function setupBackpackMonitor()
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
     
-    while alienTeleportRunning and player do
+    while alienTeleportRunning and alienHuntEnabled do
         local alienGoo = backpack:FindFirstChild("Alien Goo")
         if alienGoo then
             task.wait(5)
@@ -263,7 +465,7 @@ local function startAlienTeleport()
     coroutine.wrap(setupBackpackMonitor)()
     
     alienTeleportThread = coroutine.create(function()
-        while alienTeleportRunning and player do
+        while alienTeleportRunning and alienHuntEnabled do
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -277,7 +479,6 @@ local function startAlienTeleport()
             task.wait(0.3)
         end
         alienTeleportRunning = false
-        alienTeleportThread = nil
     end)
     coroutine.resume(alienTeleportThread)
 end
@@ -285,7 +486,6 @@ end
 -- ===================== 半自动里德利功能=====================
 local ridleyTeleportRunning = false
 local ridleyTeleportThread = nil
-local objectsToRemove = {"AcidPool"}
 
 local function stopRidleyTeleport()
     if ridleyTeleportRunning then
@@ -294,16 +494,13 @@ local function stopRidleyTeleport()
             coroutine.close(ridleyTeleportThread)
             ridleyTeleportThread = nil
         end
-        print("⏹️ 炸弹传送已停止")
     end
 end
 
 local function removeDangerParts()
-    -- 移除Ridley's Cave中的危险部件
     local ridleysCave = workspace.Map.Islands["Ridley's Cave"]
     if ridleysCave then
         for _, child in ipairs(ridleysCave:GetChildren()) do
-            -- 检查子对象是否同时包含TouchInterest和Texture
             local hasTouchInterest = false
             local hasTexture = false
             
@@ -314,21 +511,17 @@ local function removeDangerParts()
                     hasTexture = true
                 end
                 
-                -- 如果两个条件都满足，则跳出循环
                 if hasTouchInterest and hasTexture then
                     break
                 end
             end
             
-            -- 只有当同时包含TouchInterest和Texture时才移除
             if hasTouchInterest and hasTexture then
                 child:Destroy()
-                print("✅ 已移除危险方块: "..child.Name)
             end
         end
     end
     
-    -- 移除Camera下的AcidPool对象
     local acidPool = workspace.Camera:FindFirstChild("AcidPool")
     if acidPool then
         acidPool:Destroy()
@@ -369,15 +562,12 @@ local function startRidleyTeleport()
     ridleyTeleportRunning = true
     local player = game.Players.LocalPlayer
     
-    -- 先移除一次危险对象
     removeDangerParts()
     
     ridleyTeleportThread = coroutine.create(function()
-        while ridleyTeleportRunning and player do
-            -- 持续移除危险对象
+        while ridleyTeleportRunning and ridleyHuntEnabled do
             removeDangerParts()
             
-            -- 传送到最近的Bomb
             local character = player.Character
             if character then
                 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
@@ -391,7 +581,6 @@ local function startRidleyTeleport()
             task.wait(0.3)
         end
         ridleyTeleportRunning = false
-        ridleyTeleportThread = nil
     end)
     coroutine.resume(ridleyTeleportThread)
 end
@@ -401,13 +590,64 @@ local hideButton = createButton("隐藏UI", UDim2.new(0, 10, 0, 10), Color3.new(
 local isHidden = false
 
 createButton("关闭UI", UDim2.new(0, 10, 0, 50), Color3.new(1, 0, 0), function()
+    -- 停止所有正在运行的功能
+    stopAutoSlider()
+    stopAutoDig()
+    stopAutoCreatePile()
+    stopLankersTeleport()
+    stopFallingStarTeleport()
+    stopAlienTeleport()
+    stopRidleyTeleport()
+    
     screenGui:Destroy()
-    print("✅ "..gameName.."面板: 关闭")
+    print("✅ "..gameName.." - 面板: 关闭")
 end)
 
 createButton("控制台", UDim2.new(0, 10, 0, 90), Color3.new(1, 1, 0.5), function()
     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F9, false, game)
-    print("✅ 已打开控制台")
+    print("✅ 控制台: 已开启")
+end)
+
+-- 自动滑块按钮
+local autoSliderButton = createButton("自动滑块: 关", UDim2.new(0, 270, 0, 10), Color3.new(0.5, 1, 0.5))
+autoSliderButton.MouseButton1Click:Connect(function()
+    autoSliderEnabled = not autoSliderEnabled
+    autoSliderButton.Text = "自动滑块: "..(autoSliderEnabled and "开" or "关")
+    autoSliderButton.TextColor3 = autoSliderEnabled and Color3.new(0,1,0) or Color3.new(0.5,1,0.5)
+    print("✅ 自动滑块: "..(autoSliderEnabled and "已开启" or "已关闭"))
+    if autoSliderEnabled then 
+        startAutoSlider() 
+    else 
+        stopAutoSlider() 
+    end
+end)
+
+-- 自动挖掘按钮
+local autoDigButton = createButton("自动挖掘: 关", UDim2.new(0, 270, 0, 50), Color3.new(0.2, 0.8, 0.8))
+autoDigButton.MouseButton1Click:Connect(function()
+    autoDigEnabled = not autoDigEnabled
+    autoDigButton.Text = "自动挖掘: "..(autoDigEnabled and "开" or "关")
+    autoDigButton.TextColor3 = autoDigEnabled and Color3.new(0,1,0) or Color3.new(0.2,0.8,0.8)
+    print("✅ 自动挖掘: "..(autoDigEnabled and "已开启" or "已关闭"))
+    if autoDigEnabled then 
+        startAutoDig() 
+    else 
+        stopAutoDig() 
+    end
+end)
+
+-- 自动创建堆按钮
+local autoCreatePileButton = createButton("自动创建堆: 关", UDim2.new(0, 270, 0, 90), Color3.new(0.8, 0.2, 0.8))
+autoCreatePileButton.MouseButton1Click:Connect(function()
+    autoCreatePileEnabled = not autoCreatePileEnabled
+    autoCreatePileButton.Text = "自动创建堆: "..(autoCreatePileEnabled and "开" or "关")
+    autoCreatePileButton.TextColor3 = autoCreatePileEnabled and Color3.new(0,1,0) or Color3.new(0.8,0.2,0.8)
+    print("✅ 自动创建堆: "..(autoCreatePileEnabled and "已开启" or "已关闭"))
+    if autoCreatePileEnabled then 
+        startAutoCreatePile() 
+    else 
+        stopAutoCreatePile() 
+    end
 end)
 
 -- 自动朗克斯按钮
@@ -416,16 +656,26 @@ lankersHuntButton.MouseButton1Click:Connect(function()
     lankersHuntEnabled = not lankersHuntEnabled
     lankersHuntButton.Text = "半自动朗克斯: "..(lankersHuntEnabled and "开" or "关")
     lankersHuntButton.TextColor3 = lankersHuntEnabled and Color3.new(0,1,0) or Color3.new(0.8,0.5,1)
-    if lankersHuntEnabled then startLankersTeleport() else stopLankersTeleport() end
+    print("✅ 半自动朗克斯: "..(lankersHuntEnabled and "已开启" or "已关闭"))
+    if lankersHuntEnabled then 
+        startLankersTeleport() 
+    else 
+        stopLankersTeleport() 
+    end
 end)
 
--- 半自动坠落星按钮 (金色按钮)
+-- 半自动坠落星按钮
 local fallingStarButton = createButton("半自动坠落星: 关", UDim2.new(0, 140, 0, 50), Color3.new(1, 0.84, 0))
 fallingStarButton.MouseButton1Click:Connect(function()
     fallingStarEnabled = not fallingStarEnabled
     fallingStarButton.Text = "半自动坠落星: "..(fallingStarEnabled and "开" or "关")
     fallingStarButton.TextColor3 = fallingStarEnabled and Color3.new(0,1,0) or Color3.new(1,0.84,0)
-    if fallingStarEnabled then startFallingStarTeleport() else stopFallingStarTeleport() end
+    print("✅ 半自动坠落星: "..(fallingStarEnabled and "已开启" or "已关闭"))
+    if fallingStarEnabled then 
+        startFallingStarTeleport() 
+    else 
+        stopFallingStarTeleport() 
+    end
 end)
 
 -- 半自动外星人按钮
@@ -434,7 +684,12 @@ alienHuntButton.MouseButton1Click:Connect(function()
     alienHuntEnabled = not alienHuntEnabled
     alienHuntButton.Text = "半自动外星人: "..(alienHuntEnabled and "开" or "关")
     alienHuntButton.TextColor3 = alienHuntEnabled and Color3.new(0,1,0) or Color3.new(1,0.5,0)
-    if alienHuntEnabled then startAlienTeleport() else stopAlienTeleport() end
+    print("✅ 半自动外星人: "..(alienHuntEnabled and "已开启" or "已关闭"))
+    if alienHuntEnabled then 
+        startAlienTeleport() 
+    else 
+        stopAlienTeleport() 
+    end
 end)
 
 -- 半自动里德利按钮
@@ -443,14 +698,19 @@ ridleyHuntButton.MouseButton1Click:Connect(function()
     ridleyHuntEnabled = not ridleyHuntEnabled
     ridleyHuntButton.Text = "半自动里德利: "..(ridleyHuntEnabled and "开" or "关")
     ridleyHuntButton.TextColor3 = ridleyHuntEnabled and Color3.new(0,1,0) or Color3.new(0.5,0.8,1)
-    if ridleyHuntEnabled then startRidleyTeleport() else stopRidleyTeleport() end
+    print("✅ 半自动里德利: "..(ridleyHuntEnabled and "已开启" or "已关闭"))
+    if ridleyHuntEnabled then 
+        startRidleyTeleport() 
+    else 
+        stopRidleyTeleport() 
+    end
 end)
 
 -- ===================== UI拖动功能 =====================
 local dragging = false 
 local dragInput 
 local dragStart = nil 
-local startPositions = {} -- 存储所有按钮的初始位置
+local startPositions = {}
 
 -- 初始化记录所有按钮位置
 for _, child in ipairs(screenGui:GetChildren()) do
@@ -464,7 +724,6 @@ local function updatePos(input)
     
     local delta = input.Position - dragStart 
     
-    -- 更新所有按钮位置
     for button, startPos in pairs(startPositions) do
         button.Position = UDim2.new(
             startPos.X.Scale, 
@@ -515,7 +774,7 @@ hideButton.MouseButton1Click:Connect(function()
         end
     end
     hideButton.Text = isHidden and "显示UI" or "隐藏UI"
-    print("隐藏状态:", isHidden and "F" or "T")
+    print("✅ 隐藏状态:", isHidden and "已关闭" or "已开启")
 end)
 
 -- 加载完成通知
@@ -526,4 +785,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含半自动外星人、半自动里德利和自动朗克斯功能\n- 版本: 1.4.2\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 包含自动挖掘、自动创建堆、自动滑块及多种半自动狩猎功能\n- 版本: 1.6.1\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
