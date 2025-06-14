@@ -14,7 +14,8 @@ loadstring(game:HttpGet("https://github.com/InLTree/LinRobloxScript/raw/refs/hea
 
 - **更新内容：**
 > 放入自动执行中可自动加载对应脚本控制台查看支持的地图🗺️ - 2025/05/06
-> 更改命名
+> 
+> 更改命名 - 2025-06-14
 
 - 使用方法：执行即用
 
@@ -30,6 +31,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 
 - **更新内容：**
 > 并未恢复更新，只是更改脚本命名 - 2025/05/06
+> 
 > 更改脚本命名！- 2025-06-14
 
 - 使用方法：执行即用，配合飞行更佳
@@ -46,7 +48,9 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 
 - **更新内容：**
 > 自动购买宠物和移除植物部件按钮 - 2025/05/04
+> 
 > 优化自动购买如没有更新时游戏作者更新了新种子或工具可以进行购买！！！ - 2025/05/06
+> 
 >更改脚本名称及内容 - 2025-06-14
 
 - 使用方法：执行即用
@@ -63,6 +67,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 
 - **更新内容：**
 > 添加了半自动朗克斯 - 2025/05/03
+> 
 > 更改脚本名称及新增自动挖掘堆、自动创建堆和自动滑块 - 2025-06-14
 
 - 使用方法：执行即用
