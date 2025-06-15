@@ -7,7 +7,7 @@
 ### Script Loader｜Script
 
 ```lua
-loadstring(game:HttpGet("https://github.com/InLTree/LinRobloxScript/raw/refs/heads/main/Script_Loader.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/Script_Loader.lua"))()
 ```
 
 - 脚本简介：**脚本加载器｜Script**｜用于加载对应地图脚本！没有对应的脚本则不会加载！
