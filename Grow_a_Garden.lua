@@ -10,6 +10,7 @@ local autoSeedsEnabled = false
 local autoToolsEnabled = false
 local autoPetsEnabled = false
 local autoEventItemsEnabled = false
+local summerHarvestEnabled = false
 
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
@@ -485,6 +486,27 @@ autoEventItemsButton.MouseButton1Click:Connect(function()
     end
 end)
 
+local summerHarvestButton = createButton("提交夏日果实: 关", UDim2.new(0, 140, 0, 170), Color3.new(1, 0.6, 0.2))
+
+summerHarvestButton.MouseButton1Click:Connect(function()
+    summerHarvestEnabled = not summerHarvestEnabled
+    summerHarvestButton.Text = "提交夏日果实: " .. (summerHarvestEnabled and "开" or "关")
+    summerHarvestButton.TextColor3 = summerHarvestEnabled and Color3.new(1, 0.4, 0) or Color3.new(1, 0.6, 0.2)
+    print("✅ 提交夏日果实: " .. (summerHarvestEnabled and "已开启" or "已关闭"))
+    
+    if summerHarvestEnabled then
+        spawn(function()
+            while summerHarvestEnabled do
+                local args = {
+                    "SubmitAllPlants"
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SummerHarvestRemoteEvent"):FireServer(unpack(args))
+                task.wait(1) -- 每秒提交一次
+            end
+        end)
+    end
+end)
+
 -- 移除植物部件按钮
 createButton("移除植物部件", UDim2.new(0, 270, 0, 50), Color3.new(1, 0.3, 0.3), ProcessFarmWithFeedback)
 
@@ -627,4 +649,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜添加自动购买宠物，移除植物部件、打开商店界面和优化自动购买种子和工具\n- 版本: 1.0.7\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜添加一键提交夏日果实\n- 版本: 1.0.8\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
