@@ -7,10 +7,14 @@ local player = Players.LocalPlayer
 
 -- 声明自动购买控制变量
 local autoSeedsEnabled = false
-local autoToolsEnabled = false
+local autoGearEnabled = false
 local autoPetsEnabled = false
 local autoEventItemsEnabled = false
-local summerHarvestEnabled = false
+local autoTravelMerchantEnabled = false
+local autoCosmeticsEnabled = false
+-- 隐藏植物部件控制变量
+local isFarmPartsHidden = false
+local FarmHiddenObjects = {}
 
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
@@ -60,338 +64,147 @@ local function createButton(name, position, color, callback)
     return button
 end
 
--- ===================== 获取玩家谢克尔数量 =====================
-local function getPlayerSheckles()
-    local shecklesUI = player.PlayerGui:FindFirstChild("Sheckles_UI")
-    if shecklesUI and shecklesUI:FindFirstChild("TextLabel") then
-        local shecklesText = shecklesUI.TextLabel.Text
-        -- 提取数字部分 (例如: "1,234" -> 1234)
-        local numericValue = string.gsub(shecklesText, "[^%d]", "")
-        return tonumber(numericValue) or 0
-    end
-    return 0
-end
-
--- ===================== 获取物品价格 =====================
-local function getItemCost(frame)
-    if frame and frame:FindFirstChild("Main_Frame") then
-        local costText = frame.Main_Frame:FindFirstChild("Cost_Text")
-        if costText and costText.Text ~= "NO STOCK" then
-            -- 提取数字部分 (例如: "1,234" -> 1234)
-            local numericValue = string.gsub(costText.Text, "[^%d]", "")
-            return tonumber(numericValue) or 0
-        end
-    end
-    return 0
-end
-
--- ===================== 移除植物部件功能 =====================
-local totalRemoved = 0
-
-local function RemovePartsWithoutPrompts(parent)
-    local removed = 0
-    local children = parent:GetChildren()
-    
-    for i = #children, 1, -1 do
-        local child = children[i]
-        
-        if child:IsA("Model") then
-            removed = removed + RemovePartsWithoutPrompts(child)
-        elseif child:IsA("BasePart") then
-            local hasPrompt = false
-            for _, desc in ipairs(child:GetDescendants()) do
-                if desc:IsA("ProximityPrompt") then
-                    hasPrompt = true
-                    break
-                end
-            end
+-- ===================== 隐藏/恢复植物部件功能 =====================
+local function HideFarmParentObjectsWithoutPrompt(FarmModel)
+    for _, FarmParentObj in ipairs(FarmModel:GetChildren()) do
+        if FarmParentObj:IsA("Part") or FarmParentObj:IsA("MeshPart") then
+            local HasFarmPrompt = FarmParentObj:FindFirstChildOfClass("ProximityPrompt")
             
-            if not hasPrompt then
-                child:Destroy()
-                removed = removed + 1
+            if not HasFarmPrompt and not FarmHiddenObjects[FarmParentObj] then
+                FarmHiddenObjects[FarmParentObj] = {
+                    Transparency = FarmParentObj.Transparency,
+                    CanCollide = FarmParentObj.CanCollide
+                }
+                FarmParentObj.Transparency = 1
+                FarmParentObj.CanCollide = false
             end
         end
     end
-    
-    return removed
 end
 
-local function ProcessFarmWithFeedback()
-    print("✅ 移除植物部件：已点击")
-    print(("-"):rep(40))
-    
-    totalRemoved = 0  -- 重置计数器
-    
-    for idx, farmChild in ipairs(workspace.Farm:GetChildren()) do
-        local childRemoved = 0
-        local childName = farmChild.Name
-        
-        -- 查找Important.Plants_Physical路径
-        local important = farmChild:FindFirstChild("Important")
-        if important then
-            local plantsPhysical = important:FindFirstChild("Plants_Physical")
-            if plantsPhysical then
-                for _, plantModel in ipairs(plantsPhysical:GetChildren()) do
-                    if plantModel:IsA("Model") then
-                        childRemoved = childRemoved + RemovePartsWithoutPrompts(plantModel)
+local function RestoreFarmHiddenObjects()
+    for FarmObj, OriginalFarmState in pairs(FarmHiddenObjects) do
+        if FarmObj and FarmObj.Parent then
+            FarmObj.Transparency = OriginalFarmState.Transparency
+            FarmObj.CanCollide = OriginalFarmState.CanCollide
+        end
+    end
+    FarmHiddenObjects = {}
+end
+
+local function ProcessAllFarmLayers(FarmParent)
+    for _, FarmChild in ipairs(FarmParent:GetChildren()) do
+        if FarmChild.Name == "Farm" then
+            local FarmImportant = FarmChild:FindFirstChild("Important")
+            local FarmPlants = FarmImportant and FarmImportant:FindFirstChild("Plants_Physical")
+            
+            if FarmPlants then
+                for _, FarmModel in ipairs(FarmPlants:GetChildren()) do
+                    if FarmModel:IsA("Model") then
+                        HideFarmParentObjectsWithoutPrompt(FarmModel)
                     end
                 end
             end
-        end
-        
-        print(string.format("农场 [%d] %-20s : 已移除 %d 植物部件", 
-              idx, childName, childRemoved))
-        
-        totalRemoved = totalRemoved + childRemoved
-    end
-    
-    print(("-"):rep(40))
-    print(string.format("✅ 已移除 %d 植物部件", totalRemoved))
-end
-
--- ===================== 种子自动购买功能 =====================
-local SEED_RARITY_ORDER = {
-    ["Prismatic"] = 7,
-    ["Divine"] = 6,
-    ["Mythical"] = 5,
-    ["Legendary"] = 4,
-    ["Rare"] = 3,
-    ["Uncommon"] = 2,
-    ["Common"] = 1
-}
-
-local function getSeedShopFrame()
-    return Players.LocalPlayer.PlayerGui:WaitForChild("Seed_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
-end
-
-local function isSeedInStock(seedName)
-    local seedFrame = getSeedShopFrame():FindFirstChild(seedName)
-    if seedFrame then
-        local costText = seedFrame:FindFirstChild("Main_Frame") and seedFrame.Main_Frame:FindFirstChild("Cost_Text")
-        if costText and costText.Text ~= "NO STOCK" then
-            local playerSheckles = getPlayerSheckles()
-            local itemCost = getItemCost(seedFrame)
-            return playerSheckles >= itemCost
+            
+            ProcessAllFarmLayers(FarmChild)
         end
     end
-    return false
 end
 
-local function getSortedSeeds()
-    local seeds = {}
-    local scrollingFrame = getSeedShopFrame()
-    
-    for _, seedFrame in ipairs(scrollingFrame:GetChildren()) do
-        local rarityText = seedFrame:FindFirstChild("Main_Frame") and seedFrame.Main_Frame:FindFirstChild("Rarity_Text")
-        if rarityText and isSeedInStock(seedFrame.Name) then
-            table.insert(seeds, {
-                name = seedFrame.Name,
-                rarity = rarityText.Text,
-                level = SEED_RARITY_ORDER[rarityText.Text] or 0,
-                cost = getItemCost(seedFrame)
-            })
-        end
-    end
-    
-    table.sort(seeds, function(a, b)
-        if a.level == b.level then
-            return a.cost < b.cost  -- 相同稀有度时选择更便宜的
-        end
-        return a.level > b.level  -- 按稀有度降序排列
-    end)
-    
-    return seeds
-end
-
-local function purchaseSeedsSequentially(seeds, index)
-    if not autoSeedsEnabled or not seeds[index] then return end
-    
-    -- 检查库存状态和玩家资金
-    if isSeedInStock(seeds[index].name) then
-        -- 发送种子购买请求
-        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(seeds[index].name)
-    end
-    
-    -- 0.1秒后购买下一个种子
-    task.delay(0.1, function()
-        purchaseSeedsSequentially(seeds, index + 1)
-    end)
-end
-
-local function autoPurchaseSeedsByRarity()
+-- ===================== 自动种子商店 =====================
+local function autoPurchaseSeeds()
     while autoSeedsEnabled do
-        local sortedSeeds = getSortedSeeds()
-        if #sortedSeeds > 0 then
-            purchaseSeedsSequentially(sortedSeeds, 1)
+        local AutoSeedShop = player.PlayerGui:WaitForChild("Seed_Shop").Frame:WaitForChild("ScrollingFrame")
+        local BuySeedEvent = ReplicatedStorage.GameEvents:WaitForChild("BuySeedStock")
+        
+        for _, SeedItem in ipairs(AutoSeedShop:GetChildren()) do
+            if autoSeedsEnabled then
+                BuySeedEvent:FireServer(SeedItem.Name)
+            end
         end
-        task.wait(0.1) -- 每次完整购买循环后等待0.1秒
+        task.wait(0.1)
     end
 end
 
--- ===================== 工具自动购买功能 =====================
-local GEARS_RARITY_ORDER = {
-    ["Prismatic"] = 7,
-    ["Divine"] = 6,
-    ["Mythical"] = 5,
-    ["Legendary"] = 4,
-    ["Rare"] = 3,
-    ["Uncommon"] = 2,
-    ["Common"] = 1
-}
-
-local function getGearShopFrame()
-    return Players.LocalPlayer.PlayerGui:WaitForChild("Gear_Shop"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
-end
-
-local function isGearInStock(gearName)
-    local gearFrame = getGearShopFrame():FindFirstChild(gearName)
-    if gearFrame then
-        local costText = gearFrame:FindFirstChild("Main_Frame") and gearFrame.Main_Frame:FindFirstChild("Cost_Text")
-        if costText and costText.Text ~= "NO STOCK" then
-            local playerSheckles = getPlayerSheckles()
-            local itemCost = getItemCost(gearFrame)
-            return playerSheckles >= itemCost
+-- ===================== 自动装备商店 =====================
+local function autoPurchaseGears()
+    while autoGearEnabled do
+        local AutoGearShop = player.PlayerGui:WaitForChild("Gear_Shop").Frame:WaitForChild("ScrollingFrame")
+        local BuyGearEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyGearStock")
+        
+        for _, GearItem in ipairs(AutoGearShop:GetChildren()) do
+            if autoGearEnabled then
+                BuyGearEvent:FireServer(GearItem.Name)
+            end
         end
+        task.wait(0.1)
     end
-    return false
 end
 
-local function getSortedGears()
-    local gears = {}
-    local scrollingFrame = getGearShopFrame()
-    
-    for _, gearFrame in ipairs(scrollingFrame:GetChildren()) do
-        local rarityText = gearFrame:FindFirstChild("Main_Frame") and gearFrame.Main_Frame:FindFirstChild("Rarity_Text")
-        if rarityText and isGearInStock(gearFrame.Name) then
-            table.insert(gears, {
-                name = gearFrame.Name,
-                rarity = rarityText.Text,
-                level = GEARS_RARITY_ORDER[rarityText.Text] or 0,
-                cost = getItemCost(gearFrame)
-            })
+-- ===================== 自动蛋商店 =====================
+local function autoPurchasePets()
+    while autoPetsEnabled do
+        local AutoPetEggShopEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg")
+        
+        for PetEggItem = 1, 3 do
+            if autoPetsEnabled then
+                AutoPetEggShopEvent:FireServer(PetEggItem)
+            end
         end
+        task.wait(0.1)
     end
-    
-    table.sort(gears, function(a, b)
-        if a.level == b.level then
-            return a.cost < b.cost  -- 相同稀有度时选择更便宜的
+end
+
+-- ===================== 自动旅行商店 =====================
+local function autoPurchaseTravelMerchant()
+    while autoTravelMerchantEnabled do
+        local AutoTravelingMerchantShop = player.PlayerGui:WaitForChild("TravelingMerchantShop_UI").Frame:WaitForChild("ScrollingFrame")
+        local BuyTravelingMerchantItem = ReplicatedStorage.GameEvents:WaitForChild("BuyTravelingMerchantShopStock")
+        
+        for _, TravelingMerchantItem in ipairs(AutoTravelingMerchantShop:GetChildren()) do
+            if autoTravelMerchantEnabled then
+                BuyTravelingMerchantItem:FireServer(TravelingMerchantItem.Name)
+            end
         end
-        return a.level > b.level  -- 降序排列
-    end)
-    
-    return gears
-end
-
-local function purchaseGearsSequentially(gears, index)
-    if not autoToolsEnabled or not gears[index] then return end
-    
-    -- 检查库存状态和玩家资金
-    if isGearInStock(gears[index].name) then
-        -- 发送工具购买请求
-        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(gears[index].name)
-    end
-    
-    -- 延迟后购买下一个（0.1秒间隔）
-    task.delay(0.1, function()
-        purchaseGearsSequentially(gears, index + 1)
-    end)
-end
-
-local function autoPurchaseGearsByRarity()
-    while autoToolsEnabled do
-        local sortedGears = getSortedGears()
-        if #sortedGears > 0 then
-            purchaseGearsSequentially(sortedGears, 1)
-        end
-        task.wait(0.11)
+        task.wait(0.1)
     end
 end
 
--- ===================== 活动物品自动购买功能 =====================
-local EVENT_ITEMS_RARITY_ORDER = {
-    ["Prismatic"] = 7,
-    ["Divine"] = 6,
-    ["Mythical"] = 5,
-    ["Legendary"] = 4,
-    ["Rare"] = 3,
-    ["Uncommon"] = 2,
-    ["Common"] = 1
-}
-
-local function getEventShopFrame()
-    local eventShopUI = player.PlayerGui:FindFirstChild("EventShop_UI")
-    if eventShopUI then
-        return eventShopUI:WaitForChild("Frame"):WaitForChild("ScrollingFrame")
-    end
-    return nil
-end
-
-local function isEventItemInStock(itemName)
-    local itemFrame = getEventShopFrame():FindFirstChild(itemName)
-    if itemFrame then
-        local costText = itemFrame:FindFirstChild("Main_Frame") and itemFrame.Main_Frame:FindFirstChild("Cost_Text")
-        if costText and costText.Text ~= "NO STOCK" then
-            local playerSheckles = getPlayerSheckles()
-            local itemCost = getItemCost(itemFrame)
-            return playerSheckles >= itemCost
-        end
-    end
-    return false
-end
-
-local function getSortedEventItems()
-    local eventItems = {}
-    local scrollingFrame = getEventShopFrame()
-    
-    if scrollingFrame then
-        for _, itemFrame in ipairs(scrollingFrame:GetChildren()) do
-            local rarityText = itemFrame:FindFirstChild("Main_Frame") and itemFrame.Main_Frame:FindFirstChild("Rarity_Text")
-            if rarityText and isEventItemInStock(itemFrame.Name) then
-                table.insert(eventItems, {
-                    name = itemFrame.Name,
-                    rarity = rarityText.Text,
-                    level = EVENT_ITEMS_RARITY_ORDER[rarityText.Text] or 0,
-                    cost = getItemCost(itemFrame)
-                })
+-- ===================== 自动装饰品商店 =====================
+local function autoPurchaseCosmetics()
+    while autoCosmeticsEnabled do
+        local AutoCosmeticShop = player.PlayerGui:WaitForChild("CosmeticShop_UI"):WaitForChild("CosmeticShop"):WaitForChild("Main"):WaitForChild("Holder"):WaitForChild("Shop"):WaitForChild("ContentFrame")
+        local topSegment = AutoCosmeticShop:WaitForChild("TopSegment")
+        local bottomSegment = AutoCosmeticShop:WaitForChild("BottomSegment")
+        local buyCosmeticCrateEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticCrate")
+        
+        for _, CosmeticItem in ipairs(topSegment:GetChildren()) do
+            if autoCosmeticsEnabled then
+                buyCosmeticCrateEvent:FireServer(CosmeticItem.Name)
             end
         end
         
-        table.sort(eventItems, function(a, b)
-            if a.level == b.level then
-                return a.cost < b.cost  -- 相同稀有度时选择更便宜的
+        for _, CosmeticItem in ipairs(bottomSegment:GetChildren()) do
+            if autoCosmeticsEnabled then
+                buyCosmeticCrateEvent:FireServer(CosmeticItem.Name)
             end
-            return a.level > b.level  -- 降序排列
-        end)
-    end
-    
-    return eventItems
-end
-
-local function purchaseEventItemsSequentially(items, index)
-    if not autoEventItemsEnabled or not items[index] then return end
-    
-    -- 检查库存状态和玩家资金
-    if isEventItemInStock(items[index].name) then
-        -- 发送活动物品购买请求
-        local args = {
-            items[index].name
-        }
-        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
-    end
-    
-    -- 延迟后购买下一个（0.1秒间隔）
-    task.delay(0.1, function()
-        purchaseEventItemsSequentially(items, index + 1)
-    end)
-end
-
-local function autoPurchaseEventItemsByRarity()
-    while autoEventItemsEnabled do
-        local sortedItems = getSortedEventItems()
-        if #sortedItems > 0 then
-            purchaseEventItemsSequentially(sortedItems, 1)
         end
-        task.wait(0.11)
+        task.wait(0.1)
+    end
+end
+
+-- ===================== 自动活动商店 =====================
+local function autoPurchaseEventItems()
+    while autoEventItemsEnabled do
+        local AutoEventShop = player.PlayerGui:WaitForChild("EventShop_UI").Frame:WaitForChild("ScrollingFrame")
+        local BuyEventEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyEventShopStock")
+        
+        for _, EventItem in ipairs(AutoEventShop:GetChildren()) do
+            if autoEventItemsEnabled then
+                BuyEventEvent:FireServer(EventItem.Name)
+            end
+        end
+        task.wait(0.1)
     end
 end
 
@@ -401,173 +214,177 @@ local isHidden = false
 
 createButton("关闭UI", UDim2.new(0, 10, 0, 50), Color3.new(1, 0, 0), function()
     screenGui:Destroy()
-    print("✅ "..gameName.." - 面板: 已关闭")
+    print("🔴 "..gameName.." - 面板: 已关闭")
 end)
 
 createButton("控制台", UDim2.new(0, 10, 0, 90), Color3.new(1, 1, 0.5), function()
     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F9, false, game)
-    print("✅ 控制台: 已开启")
+    print("🟢 控制台: 已开启")
 end)
 
--- 工具商店按钮
-createButton("工具商店传送", UDim2.new(0, 270, 0, 10), Color3.new(0, 1, 1), function()
-    local character = game.Players.LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        character.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_3.CFrame
-        print("✅ 工具商店传送: 已点击")
-    end
-end)
-
--- 自动种子功能
-local autoSeedsButton = createButton("自动种子: 关", UDim2.new(0, 140, 0, 10), Color3.new(0.5, 1, 0.5))
+-- 自动种子功能（绿色系：种子/植物关联）
+local autoSeedsButton = createButton("自动种子: 关", UDim2.new(0, 140, 0, 10), Color3.new(0.3, 0.8, 0.3))
 
 autoSeedsButton.MouseButton1Click:Connect(function()
     autoSeedsEnabled = not autoSeedsEnabled
     autoSeedsButton.Text = "自动种子: " .. (autoSeedsEnabled and "开" or "关")
-    autoSeedsButton.TextColor3 = autoSeedsEnabled and Color3.new(0, 1, 0) or Color3.new(0.5, 1, 0.5)
-    print("✅ 自动种子: " .. (autoSeedsEnabled and "已开启" or "已关闭"))
+    autoSeedsButton.TextColor3 = autoSeedsEnabled and Color3.new(0, 1, 0) or Color3.new(0.3, 0.8, 0.3)
+    print("🟢 自动种子: " .. (autoSeedsEnabled and "已开启" or "已关闭"))
     
     if autoSeedsEnabled then
-        spawn(autoPurchaseSeedsByRarity)
+        spawn(autoPurchaseSeeds)
     end
 end)
 
--- 自动工具功能
-local autoToolsButton = createButton("自动工具: 关", UDim2.new(0, 140, 0, 50), Color3.new(0.5, 0.5, 1))
+-- 自动工具功能（蓝色系：工具/装备关联）
+local autoToolsButton = createButton("自动工具: 关", UDim2.new(0, 140, 0, 50), Color3.new(0.3, 0.6, 0.9))
 
 autoToolsButton.MouseButton1Click:Connect(function()
-    autoToolsEnabled = not autoToolsEnabled
-    autoToolsButton.Text = "自动工具: " .. (autoToolsEnabled and "开" or "关")
-    autoToolsButton.TextColor3 = autoToolsEnabled and Color3.new(0, 0, 1) or Color3.new(0.5, 0.5, 1)
-    print("✅ 自动工具: " .. (autoToolsEnabled and "已开启" or "已关闭"))
+    autoGearEnabled = not autoGearEnabled
+    autoToolsButton.Text = "自动工具: " .. (autoGearEnabled and "开" or "关")
+    autoToolsButton.TextColor3 = autoGearEnabled and Color3.new(0, 0.4, 1) or Color3.new(0.3, 0.6, 0.9)
+    print("🟢 自动工具: " .. (autoGearEnabled and "已开启" or "已关闭"))
     
-    if autoToolsEnabled then
-        spawn(autoPurchaseGearsByRarity)
+    if autoGearEnabled then
+        spawn(autoPurchaseGears)
     end
 end)
 
--- 自动宠物功能
-local autoPetsButton = createButton("自动宠物: 关", UDim2.new(0, 140, 0, 90), Color3.new(1, 0.5, 1))
+-- 自动宠物功能（粉色系：宠物/伙伴关联）
+local autoPetsButton = createButton("自动宠物: 关", UDim2.new(0, 140, 0, 90), Color3.new(0.9, 0.5, 0.8))
 
 autoPetsButton.MouseButton1Click:Connect(function()
     autoPetsEnabled = not autoPetsEnabled
     autoPetsButton.Text = "自动宠物: " .. (autoPetsEnabled and "开" or "关")
-    autoPetsButton.TextColor3 = autoPetsEnabled and Color3.new(1, 0, 1) or Color3.new(1, 0.5, 1)
-    print("✅ 自动宠物: " .. (autoPetsEnabled and "已开启" or "已关闭"))
+    autoPetsButton.TextColor3 = autoPetsEnabled and Color3.new(0.8, 0.2, 0.7) or Color3.new(0.9, 0.5, 0.8)
+    print("🟢 自动宠物: " .. (autoPetsEnabled and "已开启" or "已关闭"))
     
     if autoPetsEnabled then
-        spawn(function()
-            while autoPetsEnabled do
-                local buyEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg")
-
-                for i = 1, 3 do
-                    if not autoPetsEnabled then break end
-                    buyEvent:FireServer(i)
-                    task.wait(0.1)
-                end
-                
-                task.wait(0.1)
-            end
-        end)
+        spawn(autoPurchasePets)
     end
 end)
 
--- 自动活动物品功能
-local autoEventItemsButton = createButton("自动活动物品: 关", UDim2.new(0, 140, 0, 130), Color3.new(1, 0.8, 0.4))
+-- 自动旅行商人功能（紫色系：特殊商人关联）
+local autoTravelMerchantButton = createButton("自动旅行商人: 关", UDim2.new(0, 140, 0, 130), Color3.new(0.7, 0.4, 0.9))
+
+autoTravelMerchantButton.MouseButton1Click:Connect(function()
+    autoTravelMerchantEnabled = not autoTravelMerchantEnabled
+    autoTravelMerchantButton.Text = "自动旅行商人: " .. (autoTravelMerchantEnabled and "开" or "关")
+    autoTravelMerchantButton.TextColor3 = autoTravelMerchantEnabled and Color3.new(0.6, 0.2, 0.8) or Color3.new(0.7, 0.4, 0.9)
+    print("🟢 自动旅行商人: " .. (autoTravelMerchantEnabled and "已开启" or "已关闭"))
+    
+    if autoTravelMerchantEnabled then
+        spawn(autoPurchaseTravelMerchant)
+    end
+end)
+
+-- 自动装饰品功能（青色系：装饰/外观关联）
+local autoCosmeticsButton = createButton("自动装饰品: 关", UDim2.new(0, 140, 0, 170), Color3.new(0.4, 0.9, 0.8))
+
+autoCosmeticsButton.MouseButton1Click:Connect(function()
+    autoCosmeticsEnabled = not autoCosmeticsEnabled
+    autoCosmeticsButton.Text = "自动装饰品: " .. (autoCosmeticsEnabled and "开" or "关")
+    autoCosmeticsButton.TextColor3 = autoCosmeticsEnabled and Color3.new(0.2, 0.8, 0.7) or Color3.new(0.4, 0.9, 0.8)
+    print("🟢 自动装饰品: " .. (autoCosmeticsEnabled and "已开启" or "已关闭"))
+    
+    if autoCosmeticsEnabled then
+        spawn(autoPurchaseCosmetics)
+    end
+end)
+
+-- 自动活动物品功能按钮（橙色系：活动/限时关联）
+local autoEventItemsButton = createButton("自动活动物品: 关", UDim2.new(0, 140, 0, 210), Color3.new(0.9, 0.6, 0.3))
 
 autoEventItemsButton.MouseButton1Click:Connect(function()
     autoEventItemsEnabled = not autoEventItemsEnabled
     autoEventItemsButton.Text = "自动活动物品: " .. (autoEventItemsEnabled and "开" or "关")
-    autoEventItemsButton.TextColor3 = autoEventItemsEnabled and Color3.new(1, 0.6, 0) or Color3.new(1, 0.8, 0.4)
-    print("✅ 自动活动物品: " .. (autoEventItemsEnabled and "已开启" or "已关闭"))
+    autoEventItemsButton.TextColor3 = autoEventItemsEnabled and Color3.new(0.8, 0.5, 0) or Color3.new(0.9, 0.6, 0.3)
+    print("🟢 自动活动物品: " .. (autoEventItemsEnabled and "已开启" or "已关闭"))
     
     if autoEventItemsEnabled then
-        spawn(autoPurchaseEventItemsByRarity)
+        spawn(autoPurchaseEventItems)
     end
 end)
 
-local summerHarvestButton = createButton("提交夏日果实: 关", UDim2.new(0, 140, 0, 170), Color3.new(1, 0.6, 0.2))
+-- 隐藏/显示植物部件按钮（深绿系：与种子功能同属植物相关）
+local farmPartsButton = createButton("隐藏植物部件: 关", UDim2.new(0, 270, 0, 10), Color3.new(0.2, 0.7, 0.2))
 
-summerHarvestButton.MouseButton1Click:Connect(function()
-    summerHarvestEnabled = not summerHarvestEnabled
-    summerHarvestButton.Text = "提交夏日果实: " .. (summerHarvestEnabled and "开" or "关")
-    summerHarvestButton.TextColor3 = summerHarvestEnabled and Color3.new(1, 0.4, 0) or Color3.new(1, 0.6, 0.2)
-    print("✅ 提交夏日果实: " .. (summerHarvestEnabled and "已开启" or "已关闭"))
+farmPartsButton.MouseButton1Click:Connect(function()
+    isFarmPartsHidden = not isFarmPartsHidden
+    farmPartsButton.Text = "隐藏植物部件: " .. (isFarmPartsHidden and "开" or "关")
+    farmPartsButton.TextColor3 = isFarmPartsHidden and Color3.new(0, 1, 0) or Color3.new(0.2, 0.7, 0.2)
+    print("🟢 植物部件: " .. (isFarmPartsHidden and "已开启" or "已关闭"))
     
-    if summerHarvestEnabled then
-        spawn(function()
-            while summerHarvestEnabled do
-                local args = {
-                    "SubmitAllPlants"
-                }
-                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SummerHarvestRemoteEvent"):FireServer(unpack(args))
-                task.wait(1) -- 每秒提交一次
-            end
-        end)
+    if isFarmPartsHidden then
+        ProcessAllFarmLayers(workspace)
+    else
+        RestoreFarmHiddenObjects()
     end
 end)
 
--- 移除植物部件按钮
-createButton("移除植物部件", UDim2.new(0, 270, 0, 50), Color3.new(1, 0.3, 0.3), ProcessFarmWithFeedback)
-
--- 界面获取按钮
-createButton("种子界面", UDim2.new(0, 270, 0, 90), Color3.new(0.5, 1, 0.5), function()
+-- 界面按钮（与对应自动功能同色系）
+createButton("种子界面", UDim2.new(0, 270, 0, 50), Color3.new(0.3, 0.8, 0.3), function()
     local seedShop = player.PlayerGui:FindFirstChild("Seed_Shop")
     if seedShop then
         seedShop.Enabled = not seedShop.Enabled
-        print("✅ 种子界面: " .. (seedShop.Enabled and "已开启" or "已关闭"))
+        print("🟢 种子界面: " .. (seedShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("工具界面", UDim2.new(0, 270, 0, 130), Color3.new(0.5, 0.5, 1), function()
+createButton("工具界面", UDim2.new(0, 270, 0, 90), Color3.new(0.3, 0.6, 0.9), function()
     local gearShop = player.PlayerGui:FindFirstChild("Gear_Shop")
     if gearShop then
         gearShop.Enabled = not gearShop.Enabled
-        print("✅ 工具界面: " .. (gearShop.Enabled and "已开启" or "已关闭"))
+        print("🟢 工具界面: " .. (gearShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
--- 装饰品界面按钮
-createButton("装饰品界面", UDim2.new(0, 270, 0, 170), Color3.new(0.4, 1, 0.8), function()
+createButton("装饰品界面", UDim2.new(0, 270, 0, 130), Color3.new(0.4, 0.9, 0.8), function()
     local cosmeticShopUI = player.PlayerGui:FindFirstChild("CosmeticShop_UI")
     if cosmeticShopUI then
         cosmeticShopUI.Enabled = not cosmeticShopUI.Enabled
-        print("✅ 装饰品界面: " .. (cosmeticShopUI.Enabled and "已开启" or "已关闭"))
+        print("🟢 装饰品界面: " .. (cosmeticShopUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("任务界面", UDim2.new(0, 270, 0, 210), Color3.new(1, 0.5, 0.5), function()
+createButton("任务界面", UDim2.new(0, 270, 0, 170), Color3.new(0.8, 0.5, 0.5), function()  -- 红色系：任务/成就关联
     local dailyQuestsUI = player.PlayerGui:FindFirstChild("DailyQuests_UI")
     if dailyQuestsUI then
         dailyQuestsUI.Enabled = not dailyQuestsUI.Enabled
-        print("✅ 任务界面: " .. (dailyQuestsUI.Enabled and "已开启" or "已关闭"))
+        print("🟢 任务界面: " .. (dailyQuestsUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
--- 启动包界面按钮
-createButton("启动包界面", UDim2.new(0, 400, 0, 10), Color3.new(0.8, 0.4, 1), function()
+-- 动态界面（与对应功能同色系）
+createButton("启动包界面", UDim2.new(0, 400, 0, 10), Color3.new(0.9, 0.7, 0.9), function()  -- 浅紫：特殊礼包关联
     local starterPackUI = player.PlayerGui:FindFirstChild("StarterPack_UI")
     if starterPackUI then
         starterPackUI.Enabled = not starterPackUI.Enabled
-        print("✅ 启动包界面: " .. (starterPackUI.Enabled and "已开启" or "已关闭"))
+        print("🟢 启动包界面: " .. (starterPackUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
--- 活动商店界面按钮
-createButton("活动商店界面", UDim2.new(0, 400, 0, 50), Color3.new(1, 1, 0), function()
+createButton("活动商店界面", UDim2.new(0, 400, 0, 50), Color3.new(0.9, 0.6, 0.3), function()  -- 橙色：与活动物品同系
     local eventShop = player.PlayerGui:FindFirstChild("EventShop_UI")
     if eventShop then
         eventShop.Enabled = not eventShop.Enabled
-        print("✅ 活动商店界面: " .. (eventShop.Enabled and "已开启" or "已关闭"))
+        print("🟢 活动商店界面: " .. (eventShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
--- 蜂蜜商店界面按钮
-createButton("蜂蜜商店界面", UDim2.new(0, 400, 0, 90), Color3.new(1, 0.8, 0.4), function()
-    local honeyEventShopUI = player.PlayerGui:FindFirstChild("HoneyEventShop_UI")
-    if honeyEventShopUI then
-        honeyEventShopUI.Enabled = not honeyEventShopUI.Enabled
-        print("✅ 蜂蜜商店界面: " .. (honeyEventShopUI.Enabled and "已开启" or "已关闭"))
+createButton("旅行商人界面", UDim2.new(0, 400, 0, 90), Color3.new(0.7, 0.4, 0.9), function()  -- 紫色：与旅行商人同系
+    local travelingMerchantUI = player.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
+    if travelingMerchantUI then
+        travelingMerchantUI.Enabled = not travelingMerchantUI.Enabled
+        print("🟢 旅行商人界面: " .. (travelingMerchantUI.Enabled and "已开启" or "已关闭"))
+    end
+end)
+
+createButton("恐龙任务界面", UDim2.new(0, 400, 0, 130), Color3.new(0.8, 0.5, 0.5), function()  -- 红色系：与任务系统同系
+    local dinoQuestsUI = player.PlayerGui:FindFirstChild("DinoQuests_UI")
+    if dinoQuestsUI then
+        dinoQuestsUI.Enabled = not dinoQuestsUI.Enabled
+        print("🟢 恐龙任务界面: " .. (dinoQuestsUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
@@ -638,8 +455,13 @@ hideButton.MouseButton1Click:Connect(function()
         end
     end
     hideButton.Text = isHidden and "显示UI" or "隐藏UI"
-    print("✅ 隐藏状态:", isHidden and "已关闭" or "已开启")
+    print("🟢 隐藏状态:", isHidden and "已关闭" or "已开启")
 end)
+
+-- 隐藏传送按钮显示
+for _, btn in ipairs(game.Players.LocalPlayer.PlayerGui.Teleport_UI.Frame:GetChildren()) do
+    if btn:IsA("ImageButton") then btn.Visible = true end
+end
 
 -- 加载完成通知
 task.wait(0.5)
@@ -649,4 +471,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜添加一键提交夏日果实\n- 版本: 1.0.8\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜重构部分内容新增部分内容\n- 版本: 1.1.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
