@@ -124,21 +124,16 @@ end
 -- ===================== 自动种子商店 =====================
 local function autoPurchaseSeeds()
     while autoSeedsEnabled do
-        local success, seedItems = pcall(function()
-            local seedShop = player.PlayerGui:WaitForChild("Seed_Shop", 5)
-            local frame = seedShop:WaitForChild("Frame", 5)
-            local scroller = frame:WaitForChild("ScrollingFrame", 5)
-            return scroller:GetChildren()
-        end)
+        local seedShop = player.PlayerGui:WaitForChild("Seed_Shop")
+        local frame = seedShop:WaitForChild("Frame")
+        local scroller = frame:WaitForChild("ScrollingFrame")
+        local seedItems = scroller:GetChildren()
         
-        if success then
-            local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuySeedStock", 5)
-            if buyEvent then
-                for _, item in ipairs(seedItems) do
-                    if not autoSeedsEnabled then break end
-                    pcall(buyEvent.FireServer, buyEvent, item.Name)
-                end
-            end
+        local buySeedEvent = ReplicatedStorage.GameEvents:WaitForChild("BuySeedStock")
+        for _, item in ipairs(seedItems) do
+            if not autoSeedsEnabled then break end
+            buySeedEvent:FireServer(item.Name)
+            task.wait(0.01)
         end
         task.wait(0.1)
     end
@@ -147,21 +142,16 @@ end
 -- ===================== 自动装备商店 =====================
 local function autoPurchaseGears()
     while autoGearEnabled do
-        local success, gearItems = pcall(function()
-            local gearShop = player.PlayerGui:WaitForChild("Gear_Shop", 5)
-            local frame = gearShop:WaitForChild("Frame", 5)
-            local scroller = frame:WaitForChild("ScrollingFrame", 5)
-            return scroller:GetChildren()
-        end)
+        local gearShop = player.PlayerGui:WaitForChild("Gear_Shop")
+        local frame = gearShop:WaitForChild("Frame")
+        local scroller = frame:WaitForChild("ScrollingFrame")
+        local gearItems = scroller:GetChildren()
         
-        if success then
-            local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyGearStock", 5)
-            if buyEvent then
-                for _, item in ipairs(gearItems) do
-                    if not autoGearEnabled then break end
-                    pcall(buyEvent.FireServer, buyEvent, item.Name)
-                end
-            end
+        local buyGearEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyGearStock")
+        for _, item in ipairs(gearItems) do
+            if not autoGearEnabled then break end
+            buyGearEvent:FireServer(item.Name)
+            task.wait(0.01)
         end
         task.wait(0.1)
     end
@@ -170,12 +160,11 @@ end
 -- ===================== 自动蛋商店 =====================
 local function autoPurchasePets()
     while autoPetsEnabled do
-        local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg", 5)
-        if buyEvent then
-            for i = 1, 3 do
-                if not autoPetsEnabled then break end
-                pcall(buyEvent.FireServer, buyEvent, i)
-            end
+        local buyPetEggEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg")
+        for i = 1, 3 do
+            if not autoPetsEnabled then break end
+            buyPetEggEvent:FireServer(i)
+            task.wait(0.01)
         end
         task.wait(0.1)
     end
@@ -184,21 +173,16 @@ end
 -- ===================== 自动旅行商店 =====================
 local function autoPurchaseTravelMerchant()
     while autoTravelMerchantEnabled do
-        local success, merchantItems = pcall(function()
-            local merchantShop = player.PlayerGui:WaitForChild("TravelingMerchantShop_UI", 5)
-            local frame = merchantShop:WaitForChild("Frame", 5)
-            local scroller = frame:WaitForChild("ScrollingFrame", 5)
-            return scroller:GetChildren()
-        end)
+        local merchantShop = player.PlayerGui:WaitForChild("TravelingMerchantShop_UI")
+        local frame = merchantShop:WaitForChild("Frame")
+        local scroller = frame:WaitForChild("ScrollingFrame")
+        local merchantItems = scroller:GetChildren()
         
-        if success then
-            local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyTravelingMerchantShopStock", 5)
-            if buyEvent then
-                for _, item in ipairs(merchantItems) do
-                    if not autoTravelMerchantEnabled then break end
-                    pcall(buyEvent.FireServer, buyEvent, item.Name)
-                end
-            end
+        local buyTravelingMerchantEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyTravelingMerchantShopStock")
+        for _, item in ipairs(merchantItems) do
+            if not autoTravelMerchantEnabled then break end
+            buyTravelingMerchantEvent:FireServer(item.Name)
+            task.wait(0.01)
         end
         task.wait(0.1)
     end
@@ -207,27 +191,26 @@ end
 -- ===================== 自动装饰品商店 =====================
 local function autoPurchaseCosmetics()
     while autoCosmeticsEnabled do
-        local success, segments = pcall(function()
-            local cosmeticShop = player.PlayerGui:WaitForChild("CosmeticShop_UI", 5)
-            local main = cosmeticShop:WaitForChild("CosmeticShop", 5):WaitForChild("Main", 5)
-            local holder = main:WaitForChild("Holder", 5)
-            local shop = holder:WaitForChild("Shop", 5)
-            local content = shop:WaitForChild("ContentFrame", 5)
-            return {
-                content:WaitForChild("TopSegment", 5):GetChildren(),
-                content:WaitForChild("BottomSegment", 5):GetChildren()
-            }
-        end)
+        local cosmeticShop = player.PlayerGui:WaitForChild("CosmeticShop_UI")
+        local main = cosmeticShop:WaitForChild("CosmeticShop"):WaitForChild("Main")
+        local holder = main:WaitForChild("Holder")
+        local shop = holder:WaitForChild("Shop")
+        local content = shop:WaitForChild("ContentFrame")
+        local segments = {
+            content:WaitForChild("TopSegment"):GetChildren(),
+            content:WaitForChild("BottomSegment"):GetChildren()
+        }
         
-        if success then
-            local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticCrate", 5)
-            if buyEvent then
-                for _, segment in ipairs(segments) do
-                    for _, item in ipairs(segment) do
-                        if not autoCosmeticsEnabled then break end
-                        pcall(buyEvent.FireServer, buyEvent, item.Name)
-                    end
-                end
+        local buyCosmeticCrateEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticCrate")
+        local buyCosmeticItemEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticItem")
+        
+        for _, segment in ipairs(segments) do
+            for _, item in ipairs(segment) do
+                if not autoCosmeticsEnabled then break end
+                
+                buyCosmeticCrateEvent:FireServer(item.Name)
+                -- buyCosmeticItemEvent:FireServer(item.Name)
+                task.wait(0.01)
             end
         end
         task.wait(0.1)
@@ -237,21 +220,16 @@ end
 -- ===================== 自动活动商店 =====================
 local function autoPurchaseEventItems()
     while autoEventItemsEnabled do
-        local success, eventItems = pcall(function()
-            local eventShop = player.PlayerGui:WaitForChild("EventShop_UI", 5)
-            local frame = eventShop:WaitForChild("Frame", 5)
-            local scroller = frame:WaitForChild("ScrollingFrame", 5)
-            return scroller:GetChildren()
-        end)
+        local eventShop = player.PlayerGui:WaitForChild("EventShop_UI")
+        local frame = eventShop:WaitForChild("Frame")
+        local scroller = frame:WaitForChild("ScrollingFrame")
+        local eventItems = scroller:GetChildren()
         
-        if success then
-            local buyEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyEventShopStock", 5)
-            if buyEvent then
-                for _, item in ipairs(eventItems) do
-                    if not autoEventItemsEnabled then break end
-                    pcall(buyEvent.FireServer, buyEvent, item.Name)
-                end
-            end
+        local buyEventEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyEventShopStock")
+        for _, item in ipairs(eventItems) do
+            if not autoEventItemsEnabled then break end
+            buyEventEvent:FireServer(item.Name)
+            task.wait(0.01)
         end
         task.wait(0.1)
     end
