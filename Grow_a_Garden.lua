@@ -160,7 +160,7 @@ local function autoPurchasePets()
         
         local buyPetEggEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg")
         for _, item in ipairs(petItems) do
-            if not autoPetsEnabled 键，然后 break end
+            if not autoPetsEnabled then break end
             buyPetEggEvent:FireServer(item.Name)
             task.wait(0.01)
         end
@@ -193,7 +193,7 @@ local function autoPurchaseCosmetics()
         local buyCosmeticCrateEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticCrate")
         local buyCosmeticItemEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticItem")
         
-        for _, segment 在 ipairs(segments) do
+        for _, segment in ipairs(segments) do
             for _, item in ipairs(segment) do
                 if not autoCosmeticsEnabled then break end
                 
@@ -213,7 +213,7 @@ local function autoPurchaseTravelMerchant()
         local merchantItems = scroller:GetChildren()
         
         local buyTravelingMerchantEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyTravelingMerchantShopStock")
-        for _, item 在 ipairs(merchantItems) do
+        for _, item in ipairs(merchantItems) do
             if not autoTravelMerchantEnabled then break end
             buyTravelingMerchantEvent:FireServer(item.Name)
             task.wait(0.01)
