@@ -3,9 +3,11 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local player = Players.LocalPlayer
-
--- 声明自动购买控制变量
+--定义常用变量
+local localPlayer = Players.LocalPlayer
+local localCharacter = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+-- 定义按钮控制变量
 local autoSeedsEnabled = false
 local autoGearEnabled = false
 local autoPetsEnabled = false
@@ -13,19 +15,15 @@ local autoEventItemsEnabled = false
 local autoTravelMerchantEnabled = false
 local autoCosmeticsEnabled = false
 local autoDinoQuestsEnabled = false
--- 隐藏作物部件控制变量
--- local isFruitsHidden = false
+-- 隐藏作物部件控制变量local isFruitsHidden = false
 -- local FruitHiddenObjects = {}
 local isCropPartsHidden = false
 local CropHiddenObjects = {}
-
 -- 创建UI界面
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "inltree_Lin_UniversalUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
-local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
 
 -- 初始化UI通知
 StarterGui:SetCore("SendNotification", {
@@ -70,11 +68,9 @@ local function createButton(name, position, color, callback)
     return button
 end
 
--- ===================== 隐藏/恢复果实部件 =====================
+-- ===================== 功能(隐藏/恢复果实部件) =====================
 -- 太难了哪位大神帮帮我qwq
-
-
--- ===================== 隐藏/恢复作物部件功能 =====================
+-- 隐藏/恢复作物部件功能
 local function HideCropParentObjectsWithoutPrompt(CropModel)
     for _, CropParentObj in ipairs(CropModel:GetChildren()) do
         if CropParentObj:IsA("Part") or CropParentObj:IsA("MeshPart") then
@@ -121,28 +117,27 @@ local function ProcessAllCropLayers(CropParent)
     end
 end
 
--- ===================== 自动种子商店 =====================
+-- ===================== 自动购买功能(自动种子商店) =====================
 local function autoPurchaseSeeds()
     while autoSeedsEnabled do
-        local seedShop = player.PlayerGui:WaitForChild("Seed_Shop")
+        local seedShop = localPlayer.PlayerGui:WaitForChild("Seed_Shop")
         local frame = seedShop:WaitForChild("Frame")
         local scroller = frame:WaitForChild("ScrollingFrame")
         local seedItems = scroller:GetChildren()
         
         local buySeedEvent = ReplicatedStorage.GameEvents:WaitForChild("BuySeedStock")
+        local seedTier1 = "Tier 1"
         for _, item in ipairs(seedItems) do
             if not autoSeedsEnabled then break end
-            buySeedEvent:FireServer(item.Name)
+            buySeedEvent:FireServer(seedTier1,item.Name)
             task.wait(0.01)
         end
-        task.wait(0.1)
     end
 end
-
--- ===================== 自动装备商店 =====================
+-- 自动装备商店
 local function autoPurchaseGears()
     while autoGearEnabled do
-        local gearShop = player.PlayerGui:WaitForChild("Gear_Shop")
+        local gearShop = localPlayer.PlayerGui:WaitForChild("Gear_Shop")
         local frame = gearShop:WaitForChild("Frame")
         local scroller = frame:WaitForChild("ScrollingFrame")
         local gearItems = scroller:GetChildren()
@@ -153,28 +148,24 @@ local function autoPurchaseGears()
             buyGearEvent:FireServer(item.Name)
             task.wait(0.01)
         end
-        task.wait(0.1)
     end
 end
-
--- ===================== 自动蛋商店 =====================
+-- 自动蛋商店
 local function autoPurchasePets()
     while autoPetsEnabled do
-        local petShop = player.PlayerGui:WaitForChild("PetShop_UI")
+        local petShop = localPlayer.PlayerGui:WaitForChild("PetShop_UI")
         local frame = petShop:WaitForChild("Frame")
         local scroller = frame:WaitForChild("ScrollingFrame")
         local petItems = scroller:GetChildren()
         
         local buyPetEggEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg")
         for _, item in ipairs(petItems) do
-            if not autoPetsEnabled then break end
+            if not autoPetsEnabled 键，然后 break end
             buyPetEggEvent:FireServer(item.Name)
             task.wait(0.01)
         end
-        task.wait(0.01)
     end
 end
-
 -- local function autoPurchasePets()
     -- while autoPetsEnabled do
         -- local buyPetEggEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyPetEgg")
@@ -186,11 +177,10 @@ end
         -- task.wait(0.1)
     -- end
 -- end
-
--- ===================== 自动装饰品商店 =====================
+-- 自动装饰品商店
 local function autoPurchaseCosmetics()
     while autoCosmeticsEnabled do
-        local cosmeticShop = player.PlayerGui:WaitForChild("CosmeticShop_UI")
+        local cosmeticShop = localPlayer.PlayerGui:WaitForChild("CosmeticShop_UI")
         local main = cosmeticShop:WaitForChild("CosmeticShop"):WaitForChild("Main")
         local holder = main:WaitForChild("Holder")
         local shop = holder:WaitForChild("Shop")
@@ -203,7 +193,7 @@ local function autoPurchaseCosmetics()
         local buyCosmeticCrateEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticCrate")
         local buyCosmeticItemEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyCosmeticItem")
         
-        for _, segment in ipairs(segments) do
+        for _, segment 在 ipairs(segments) do
             for _, item in ipairs(segment) do
                 if not autoCosmeticsEnabled then break end
                 
@@ -212,32 +202,28 @@ local function autoPurchaseCosmetics()
                 task.wait(0.01)
             end
         end
-        task.wait(0.1)
     end
 end
-
--- ===================== 自动旅行商店 =====================
+-- 自动旅行商店
 local function autoPurchaseTravelMerchant()
     while autoTravelMerchantEnabled do
-        local merchantShop = player.PlayerGui:WaitForChild("TravelingMerchantShop_UI")
+        local merchantShop = localPlayer.PlayerGui:WaitForChild("TravelingMerchantShop_UI")
         local frame = merchantShop:WaitForChild("Frame")
         local scroller = frame:WaitForChild("ScrollingFrame")
         local merchantItems = scroller:GetChildren()
         
         local buyTravelingMerchantEvent = ReplicatedStorage.GameEvents:WaitForChild("BuyTravelingMerchantShopStock")
-        for _, item in ipairs(merchantItems) do
+        for _, item 在 ipairs(merchantItems) do
             if not autoTravelMerchantEnabled then break end
             buyTravelingMerchantEvent:FireServer(item.Name)
             task.wait(0.01)
         end
-        task.wait(0.1)
     end
 end
-
--- ===================== 自动活动商店 =====================
+-- 自动活动商店
 local function autoPurchaseEventItems()
     while autoEventItemsEnabled do
-        local eventShop = player.PlayerGui:WaitForChild("EventShop_UI")
+        local eventShop = localPlayer.PlayerGui:WaitForChild("EventShop_UI")
         local frame = eventShop:WaitForChild("Frame")
         local scroller = frame:WaitForChild("ScrollingFrame")
         local eventItems = scroller:GetChildren()
@@ -248,21 +234,6 @@ local function autoPurchaseEventItems()
             buyEventEvent:FireServer(item.Name)
             task.wait(0.01)
         end
-        task.wait(0.1)
-    end
-end
-
--- ===================== 自动索赔恐龙任务 =====================
-local function autoClaimDinoQuests()
-    while autoDinoQuestsEnabled do
-        local claimDinoQuestEvent = ReplicatedStorage.GameEvents:WaitForChild("ClaimDinoQuest")
-        for item = 1, 5 do
-            if not autoDinoQuestsEnabled then break end
-            local args = {item}
-            claimDinoQuestEvent:InvokeServer(unpack(args))
-            task.wait(0.5)
-        end
-        task.wait(0.1)
     end
 end
 
@@ -280,7 +251,7 @@ createButton("控制台", UDim2.new(0, 10, 0, 80), Color3.new(1, 1, 0.5), functi
     print("🟢 控制台: 已开启")
 end)
 
--- 自动种子功能
+-- ===================== 自动购买功能按钮(自动种子) =====================
 local autoSeedsButton = createButton("自动种子: 关", UDim2.new(0, 140, 0, 10), Color3.new(0.3, 0.8, 0.3))
 
 autoSeedsButton.MouseButton1Click:Connect(function()
@@ -294,7 +265,7 @@ autoSeedsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 自动装备功能
+-- 自动装备
 local autoToolsButton = createButton("自动装备: 关", UDim2.new(0, 140, 0, 40), Color3.new(0.3, 0.6, 0.9))
 
 autoToolsButton.MouseButton1Click:Connect(function()
@@ -308,7 +279,7 @@ autoToolsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 自动宠物功能
+-- 自动宠物
 local autoPetsButton = createButton("自动宠物: 关", UDim2.new(0, 140, 0, 70), Color3.new(0.9, 0.5, 0.8))
 
 autoPetsButton.MouseButton1Click:Connect(function()
@@ -322,7 +293,7 @@ autoPetsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 自动旅行商人功能
+-- 自动旅行商人
 local autoTravelMerchantButton = createButton("自动旅行商人: 关", UDim2.new(0, 140, 0, 100), Color3.new(0.7, 0.4, 0.9))
 
 autoTravelMerchantButton.MouseButton1Click:Connect(function()
@@ -336,7 +307,7 @@ autoTravelMerchantButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 自动装饰品功能
+-- 自动装饰品
 local autoCosmeticsButton = createButton("自动装饰品: 关", UDim2.new(0, 140, 0, 130), Color3.new(0.4, 0.9, 0.8))
 
 autoCosmeticsButton.MouseButton1Click:Connect(function()
@@ -350,7 +321,7 @@ autoCosmeticsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 自动活动物品功能按钮
+-- 自动活动物品
 local autoEventItemsButton = createButton("自动活动物品: 关", UDim2.new(0, 140, 0, 160), Color3.new(0.9, 0.6, 0.3))
 
 autoEventItemsButton.MouseButton1Click:Connect(function()
@@ -364,35 +335,41 @@ autoEventItemsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 创建自动索赔恐龙任务按钮
-local autoDinoQuestsButton = createButton("自动索赔恐龙任务: 关", UDim2.new(0, 140, 0, 190), Color3.new(0.8, 0.5, 0.3))
-
-autoDinoQuestsButton.MouseButton1Click:Connect(function()
-    autoDinoQuestsEnabled = not autoDinoQuestsEnabled
-    autoDinoQuestsButton.Text = "自动索赔恐龙任务: " .. (autoDinoQuestsEnabled and "开" or "关")
-    autoDinoQuestsButton.TextColor3 = autoDinoQuestsEnabled and Color3.new(0.7, 0.3, 0) or Color3.new(0.8, 0.5, 0.3)
-    print("🟢 自动索赔恐龙任务: " .. (autoDinoQuestsEnabled and "已开启" or "已关闭"))
-    
-    if autoDinoQuestsEnabled then
-        spawn(autoClaimDinoQuests)
-    end
+-- ===================== 传送功能按钮(装备商店) =====================
+createButton("装备商店", UDim2.new(0, 270, 0, 10), Color3.new(0.6, 0.9, 0.6), function()
+    localCharacter.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_3.CFrame
+    print("🟢 已传送至：装备商店")
+end)
+-- 传送宠物商店
+createButton("宠物商店", UDim2.new(0, 270, 0, 40), Color3.new(0.9, 0.9, 0.6), function()
+    localCharacter.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_4.CFrame
+    print("🟢 已传送至：宠物商店")
+end)
+-- 传送突变机
+createButton("突变机", UDim2.new(0, 270, 0, 70), Color3.new(0.9, 0.6, 0.8), function()
+    localCharacter.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_5.CFrame
+    print("🟢 已传送至：突变机")
+end)
+-- 传送活动事件
+createButton("活动事件", UDim2.new(0, 270, 0, 100), Color3.new(0.95, 0.75, 0.85), function()
+    localCharacter.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Event_Point.CFrame
+    print("🟢 已传送至：活动事件")
 end)
 
--- 功能板块按钮
-createButton("一键售卖果实", UDim2.new(0, 270, 0, 10), Color3.new(1, 0.8, 0.8), function()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local originalPos = char.HumanoidRootPart.CFrame
+-- ===================== 功能按钮(一键售卖全部果实) =====================
+createButton("一键售卖全部果实", UDim2.new(0, 400, 0, 10), Color3.new(1, 0.8, 0.8), function()
+    local originalPos = localCharacter.HumanoidRootPart.CFrame
     
-    char.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_2.CFrame
+    localCharacter.HumanoidRootPart.CFrame = workspace.Tutorial_Points.Tutorial_Point_2.CFrame
     task.wait(0.5)
     
     ReplicatedStorage.GameEvents.Sell_Inventory:FireServer()
-    char.HumanoidRootPart.CFrame = originalPos
+    localCharacter.HumanoidRootPart.CFrame = originalPos
     print("🟢 一键售卖果实：已点击")
 end)
 
 -- 隐藏果实部件按钮（深绿系：与植物功能关联）
--- local hideFruitsButton = createButton("隐藏果实部件: 关", UDim2.new(0, 270, 0, 210), Color3.new(0.2, 0.6, 0.2))
+-- local hideFruitsButton = createButton("隐藏果实部件: 关", UDim2.new(0, 400, 0, 210), Color3.new(0.2, 0.6, 0.2))
 
 -- hideFruitsButton.MouseButton1Click:Connect(function()
     -- isFruitsHidden = not isFruitsHidden
@@ -407,8 +384,8 @@ end)
     -- end
 -- end)
 
--- 隐藏/显示植物部件按钮
-local farmPartsButton = createButton("隐藏植物部件: 关", UDim2.new(0, 270, 0, 40), Color3.new(0.2, 0.7, 0.2))
+-- 隐藏/显示植物部件
+local farmPartsButton = createButton("隐藏植物部件: 关", UDim2.new(0, 400, 0, 40), Color3.new(0.2, 0.7, 0.2))
 
 farmPartsButton.MouseButton1Click:Connect(function()
     isCropPartsHidden = not isCropPartsHidden
@@ -423,77 +400,61 @@ farmPartsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 界面板块按钮
-createButton("种子界面", UDim2.new(0, 400, 0, 10), Color3.new(0.3, 0.8, 0.3), function()
-    local seedShop = player.PlayerGui:FindFirstChild("Seed_Shop")
+-- ===================== 界面功能按钮(种子界面) =====================
+createButton("种子界面", UDim2.new(0, 530, 0, 10), Color3.new(0.3, 0.8, 0.3), function()
+    local seedShop = localPlayer.PlayerGui:FindFirstChild("Seed_Shop")
     if seedShop then
         seedShop.Enabled = not seedShop.Enabled
         print("🟢 种子界面: " .. (seedShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("装备界面", UDim2.new(0, 400, 0, 40), Color3.new(0.3, 0.6, 0.9), function()
-    local gearShop = player.PlayerGui:FindFirstChild("Gear_Shop")
+createButton("装备界面", UDim2.new(0, 530, 0, 40), Color3.new(0.3, 0.6, 0.9), function()
+    local gearShop = localPlayer.PlayerGui:FindFirstChild("Gear_Shop")
     if gearShop then
         gearShop.Enabled = not gearShop.Enabled
         print("🟢 装备界面: " .. (gearShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("宠物界面", UDim2.new(0, 400, 0, 70), Color3.new(0.9, 0.6, 0.7), function()
-    local petShopUI = player.PlayerGui:FindFirstChild("PetShop_UI")
+createButton("宠物界面", UDim2.new(0, 530, 0, 70), Color3.new(0.9, 0.6, 0.7), function()
+    local petShopUI = localPlayer.PlayerGui:FindFirstChild("PetShop_UI")
     if petShopUI then
         petShopUI.Enabled = not petShopUI.Enabled
         print("🟢 宠物界面: " .. (petShopUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("装饰品界面", UDim2.new(0, 400, 0, 100), Color3.new(0.4, 0.9, 0.8), function()
-    local cosmeticShopUI = player.PlayerGui:FindFirstChild("CosmeticShop_UI")
+createButton("装饰品界面", UDim2.new(0, 530, 0, 100), Color3.new(0.4, 0.9, 0.8), function()
+    local cosmeticShopUI = localPlayer.PlayerGui:FindFirstChild("CosmeticShop_UI")
     if cosmeticShopUI then
         cosmeticShopUI.Enabled = not cosmeticShopUI.Enabled
         print("🟢 装饰品界面: " .. (cosmeticShopUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("任务界面", UDim2.new(0, 400, 0, 130), Color3.new(0.8, 0.5, 0.5), function()
-    local dailyQuestsUI = player.PlayerGui:FindFirstChild("DailyQuests_UI")
-    if dailyQuestsUI then
-        dailyQuestsUI.Enabled = not dailyQuestsUI.Enabled
-        print("🟢 任务界面: " .. (dailyQuestsUI.Enabled and "已开启" or "已关闭"))
-    end
-end)
-
--- 动态界面
-createButton("启动包界面", UDim2.new(0, 530, 0, 10), Color3.new(0.9, 0.7, 0.9), function()
-    local starterPackUI = player.PlayerGui:FindFirstChild("StarterPack_UI")
+-- ===================== 动态界面功能按钮(启动包界面) =====================
+createButton("启动包界面", UDim2.new(0, 660, 0, 10), Color3.new(0.9, 0.7, 0.9), function()
+    local starterPackUI = localPlayer.PlayerGui:FindFirstChild("StarterPack_UI")
     if starterPackUI then
         starterPackUI.Enabled = not starterPackUI.Enabled
         print("🟢 启动包界面: " .. (starterPackUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("活动商店界面", UDim2.new(0, 530, 0, 40), Color3.new(0.9, 0.6, 0.3), function()
-    local eventShop = player.PlayerGui:FindFirstChild("EventShop_UI")
+createButton("活动商店界面", UDim2.new(0, 660, 0, 40), Color3.new(0.9, 0.6, 0.3), function()
+    local eventShop = localPlayer.PlayerGui:FindFirstChild("EventShop_UI")
     if eventShop then
         eventShop.Enabled = not eventShop.Enabled
         print("🟢 活动商店界面: " .. (eventShop.Enabled and "已开启" or "已关闭"))
     end
 end)
 
-createButton("旅行商人界面", UDim2.new(0, 530, 0, 70), Color3.new(0.7, 0.4, 0.9), function()
-    local travelingMerchantUI = player.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
+createButton("旅行商人界面", UDim2.new(0, 660, 0, 70), Color3.new(0.7, 0.4, 0.9), function()
+    local travelingMerchantUI = localPlayer.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
     if travelingMerchantUI then
         travelingMerchantUI.Enabled = not travelingMerchantUI.Enabled
         print("🟢 旅行商人界面: " .. (travelingMerchantUI.Enabled and "已开启" or "已关闭"))
-    end
-end)
-
-createButton("恐龙任务界面", UDim2.new(0, 530, 0, 100), Color3.new(0.8, 0.5, 0.5), function()
-    local dinoQuestsUI = player.PlayerGui:FindFirstChild("DinoQuests_UI")
-    if dinoQuestsUI then
-        dinoQuestsUI.Enabled = not dinoQuestsUI.Enabled
-        print("🟢 恐龙任务界面: " .. (dinoQuestsUI.Enabled and "已开启" or "已关闭"))
     end
 end)
 
@@ -568,7 +529,7 @@ hideButton.MouseButton1Click:Connect(function()
 end)
 
 -- 隐藏传送按钮显示
-for _, btn in ipairs(game.Players.LocalPlayer.PlayerGui.Teleport_UI.Frame:GetChildren()) do
+for _, btn in ipairs(localPlayer.PlayerGui.Teleport_UI.Frame:GetChildren()) do
     if btn:IsA("ImageButton") then btn.Visible = true end
 end
 
@@ -580,4 +541,4 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
-warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜重构部分内容新增部分内容\n- 版本: 1.1.1\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+warn("\n"..(("="):rep(40).."\n- 脚本名称: "..gameName.."\n- 描述: 种植花园｜重构部分内容新增部分内容\n- 版本: 1.2.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
