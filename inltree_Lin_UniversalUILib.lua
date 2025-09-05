@@ -22,7 +22,8 @@ local _private = {
     dragStart = nil,
     startPositions = {},
     gameName = "",
-    activeFunctions = {} -- 存储活跃功能的回调函数
+    activeFunctions = {}, -- 存储活跃功能的回调函数
+    onToggleChangeCallbacks = {} -- 存储状态改变回调
 }
 
 -- 初始化库
@@ -68,6 +69,23 @@ function inltree_Lin_UniversalUILib.registerFunction(buttonName, enableCallback,
         enable = enableCallback,
         disable = disableCallback
     }
+    
+    -- 如果按钮已经存在且状态为true，立即执行启用回调
+    if _private.buttonStates[buttonName] == true and enableCallback then
+        enableCallback()
+    end
+end
+
+-- 添加状态改变回调
+function inltree_Lin_UniversalUILib.onToggleChange(callback)
+    table.insert(_private.onToggleChangeCallbacks, callback)
+end
+
+-- 触发所有状态改变回调
+local function triggerToggleCallbacks(buttonName, state)
+    for _, callback in ipairs(_private.onToggleChangeCallbacks) do
+        pcall(callback, buttonName, state)
+    end
 end
 
 -- 关闭所有活跃功能
@@ -86,11 +104,14 @@ function inltree_Lin_UniversalUILib.disableAllFunctions()
             
             -- 执行禁用回调
             if _private.activeFunctions[buttonName] and _private.activeFunctions[buttonName].disable then
-                _private.activeFunctions[buttonName].disable()
+                pcall(_private.activeFunctions[buttonName].disable)
                 print("🔴 已关闭功能: "..buttonName)
             else
                 print("🔴 已设置状态为关闭: "..buttonName)
             end
+            
+            -- 触发状态改变回调
+            triggerToggleCallbacks(buttonName, false)
         end
     end
     
@@ -116,7 +137,9 @@ function inltree_Lin_UniversalUILib.createButton(name, position, color, callback
     button.Parent = _private.screenGui
     
     if callback then
-        button.MouseButton1Click:Connect(callback)
+        button.MouseButton1Click:Connect(function()
+            pcall(callback)
+        end)
     end
     
     -- 存储按钮引用
@@ -139,17 +162,15 @@ function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultCo
         
         print("🟢 "..name..": "..tostring(_private.buttonStates[name]))
         
-        -- 触发回调（如果有）
-        if inltree_Lin_UniversalUILib.onToggleChange then
-            inltree_Lin_UniversalUILib.onToggleChange(name, _private.buttonStates[name])
-        end
+        -- 触发状态改变回调
+        triggerToggleCallbacks(name, _private.buttonStates[name])
         
         -- 执行注册的功能回调
         if _private.activeFunctions[name] then
             if _private.buttonStates[name] and _private.activeFunctions[name].enable then
-                _private.activeFunctions[name].enable()
+                pcall(_private.activeFunctions[name].enable)
             elseif not _private.buttonStates[name] and _private.activeFunctions[name].disable then
-                _private.activeFunctions[name].disable()
+                pcall(_private.activeFunctions[name].disable)
             end
         end
     end)
@@ -164,12 +185,15 @@ function inltree_Lin_UniversalUILib.setButtonState(name, state)
         _private.buttons[name].Text = name..": "..tostring(state)
         _private.buttons[name].TextColor3 = state and Color3.new(0, 1, 0) or inltree_Lin_UniversalUILib.getButtonStyle().TextColor3
         
+        -- 触发状态改变回调
+        triggerToggleCallbacks(name, state)
+        
         -- 执行注册的功能回调
         if _private.activeFunctions[name] then
             if state and _private.activeFunctions[name].enable then
-                _private.activeFunctions[name].enable()
+                pcall(_private.activeFunctions[name].enable)
             elseif not state and _private.activeFunctions[name].disable then
-                _private.activeFunctions[name].disable()
+                pcall(_private.activeFunctions[name].disable)
             end
         end
     end
@@ -316,6 +340,7 @@ function inltree_Lin_UniversalUILib.reset()
     _private.buttons = {}
     _private.buttonStates = {}
     _private.activeFunctions = {}
+    _private.onToggleChangeCallbacks = {}
     _private.isHidden = false
     _private.dragging = false
     _private.dragInput = nil
