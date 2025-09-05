@@ -25,8 +25,8 @@ local _private = {
     activeFunctions = {}, -- 存储活跃功能的回调函数
     onToggleChangeCallbacks = {}, -- 存储状态改变回调
     mainUIButton = nil, -- 主UI按钮
-    subMenus = {}, -- 存储子面板
-    subMenuStates = {} -- 存储子面板状态
+    subMenus = {}, -- 存储子菜单
+    subMenuStates = {} -- 存储子菜单状态
 }
 
 -- 初始化库
@@ -139,7 +139,7 @@ function inltree_Lin_UniversalUILib.createButton(name, position, color, callback
     button.BorderColor3 = buttonStyle.BorderColor3
     button.Parent = _private.screenGui
     
-    if callback 键，然后
+    if callback then
         button.MouseButton1Click:Connect(function()
             pcall(callback)
         end)
@@ -156,12 +156,12 @@ end
 function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultColor, initialState)
     local button = inltree_Lin_UniversalUILib.createButton(name..": "..tostring(initialState or false), position, defaultColor)
     
-    _private.buttonStates[name] = initialState 或 false
+    _private.buttonStates[name] = initialState or false
     
     button.MouseButton1Click:Connect(function()
         _private.buttonStates[name] = not _private.buttonStates[name]
         button.Text = name..": "..tostring(_private.buttonStates[name])
-        button.TextColor3 = _private.buttonStates[name] 和 Color3.new(0, 1, 0) or defaultColor
+        button.TextColor3 = _private.buttonStates[name] and Color3.new(0, 1, 0) or defaultColor
         
         print("🟢 "..name..": "..tostring(_private.buttonStates[name]))
         
@@ -169,7 +169,7 @@ function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultCo
         triggerToggleCallbacks(name, _private.buttonStates[name])
         
         -- 执行注册的功能回调
-        if _private.activeFunctions[name] 键，然后
+        if _private.activeFunctions[name] then
             if _private.buttonStates[name] and _private.activeFunctions[name].enable then
                 pcall(_private.activeFunctions[name].enable)
             elseif not _private.buttonStates[name] and _private.activeFunctions[name].disable then
@@ -186,7 +186,7 @@ function inltree_Lin_UniversalUILib.setButtonState(name, state)
     if _private.buttons[name] and _private.buttonStates[name] ~= nil then
         _private.buttonStates[name] = state
         _private.buttons[name].Text = name..": "..tostring(state)
-        _private.buttons[name].TextColor3 = state 和 Color3.new(0, 1, 0) or inltree_Lin_UniversalUILib.getButtonStyle().TextColor3
+        _private.buttons[name].TextColor3 = state and Color3.new(0, 1, 0) or inltree_Lin_UniversalUILib.getButtonStyle().TextColor3
         
         -- 触发状态改变回调
         triggerToggleCallbacks(name, state)
@@ -214,7 +214,7 @@ function inltree_Lin_UniversalUILib.initDrag()
         
         local delta = input.Position - _private.dragStart
         
-        for button, startPos 在 pairs(_private.startPositions) do
+        for button, startPos in pairs(_private.startPositions) do
             button.Position = UDim2.new(
                 startPos.X.Scale, 
                 startPos.X.Offset + delta.X,
@@ -271,7 +271,7 @@ function inltree_Lin_UniversalUILib.toggleUI()
         _private.mainUIButton.Visible = not _private.isHidden
     end
     
-    -- 同时隐藏/显示所有子面板
+    -- 同时隐藏/显示所有子菜单
     for _, subMenu in pairs(_private.subMenus) do
         subMenu.Visible = not _private.isHidden
     end
@@ -302,13 +302,13 @@ function inltree_Lin_UniversalUILib.openConsole()
     print("🟢 Console opened: true")
 end
 
--- 创建主面板
+-- 创建主UI按钮（可自定义名称）
 function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     if _private.mainUIButton then
         _private.mainUIButton:Destroy()
     end
     
-    buttonName = buttonName or "主面板"
+    buttonName = buttonName or "主菜单"
     position = position or UDim2.new(0, 140, 0, 10)
     
     _private.mainUIButton = Instance.new("TextButton")
@@ -325,7 +325,7 @@ function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     _private.mainUIButton.BorderColor3 = Color3.new(0.8, 0.8, 0.8)
     _private.mainUIButton.Parent = _private.screenGui
     
-    -- 主面板拖动
+    -- 主UI按钮拖动功能
     local mainDragInput, mainDragStart, mainStartPos
     
     _private.mainUIButton.InputBegan:Connect(function(input)
@@ -362,8 +362,9 @@ function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     return _private.mainUIButton
 end
 
--- 创建子面板
+-- 创建悬浮子菜单（取消动画和圆角）
 function inltree_Lin_UniversalUILib.createSubMenu(title, options)
+    -- 如果子菜单已存在，则切换显示状态
     if _private.subMenus[title] then
         local menu = _private.subMenus[title]
         menu.Visible = not menu.Visible
@@ -371,10 +372,10 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         return menu
     end
     
-    -- 创建子面板容器
+    -- 创建子菜单容器
     local menuFrame = Instance.new("Frame")
     menuFrame.Name = title .. "SubMenu"
-    menuFrame.Size = UDim2.new(0， 150, 0, 30)
+    menuFrame.Size = UDim2.new(0, 150, 0, 30)
     menuFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.25)
     menuFrame.BackgroundTransparency = 0.1
     menuFrame.BorderSizePixel = 1
@@ -384,7 +385,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     menuFrame.Visible = false
     menuFrame.Parent = _private.screenGui
     
-    -- 标题栏
+    -- 标题栏（可拖动区域）
     local header = Instance.new("TextButton")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 30)
@@ -392,7 +393,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     header.BackgroundTransparency = 1
     header.BorderSizePixel = 0
     header.Text = title
-    header.TextColor3 = Color3.new(1， 1, 1)
+    header.TextColor3 = Color3.new(1, 1, 1)
     header.TextSize = 14
     header.Font = Enum.Font.SourceSansBold
     header.Parent = menuFrame
@@ -409,13 +410,13 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     local optionButtons = {}
     local isExpanded = false
     
-    -- 创建面板选项按钮
+    -- 创建菜单选项按钮
     for i, option in ipairs(options) do
         local button = Instance.new("TextButton")
         button.Name = option.Name
-        button.Size = UDim2.new(1， 0, 0, 28)
+        button.Size = UDim2.new(1, 0, 0, 28)
         button.Position = UDim2.new(0, 0, 0, (i-1)*28)
-        button.BackgroundColor3 = Color3.new(0.25， 0.25, 0.35)
+        button.BackgroundColor3 = Color3.new(0.25, 0.25, 0.35)
         button.BackgroundTransparency = 0.3
         button.BorderSizePixel = 1
         button.BorderColor3 = Color3.new(0.6, 0.6, 0.6)
@@ -446,7 +447,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         table.insert(optionButtons, button)
     end
     
-    -- 展开/收起面板函数
+    -- 展开/收起菜单函数
     local function toggleMenu()
         isExpanded = not isExpanded
         
@@ -462,7 +463,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     -- 标题栏点击事件（展开/收起）
     header.MouseButton1Click:Connect(toggleMenu)
     
-    -- 子面板拖动功能
+    -- 子菜单拖动功能
     local dragInput, dragStart, startPos
     
     header.InputBegan:Connect(function(input)
@@ -511,7 +512,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     return menuFrame
 end
 
--- 创建基础面板功能
+-- 创建基础UI功能
 function inltree_Lin_UniversalUILib.createBaseUI()
     inltree_Lin_UniversalUILib.createButton("隐藏UI", UDim2.new(0, 10, 0, 10), Color3.new(1, 0.5, 0), function()
         inltree_Lin_UniversalUILib.toggleUI()
@@ -538,6 +539,7 @@ end
 
 -- 重置库状态
 function inltree_Lin_UniversalUILib.reset()
+    -- 先关闭所有功能
     inltree_Lin_UniversalUILib.disableAllFunctions()
     
     -- 清理所有UI元素
@@ -572,6 +574,11 @@ function inltree_Lin_UniversalUILib.getState()
         gameName = _private.gameName,
         subMenuStates = _private.subMenuStates
     }
+end
+
+-- 获取主UI按钮（公开方法）
+function inltree_Lin_UniversalUILib.getMainUIButton()
+    return _private.mainUIButton
 end
 
 -- 导出库
