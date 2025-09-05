@@ -99,9 +99,9 @@ function inltree_Lin_UniversalUILib.disableAllFunctions()
         if state == true then
             -- 设置按钮状态为false
             _private.buttonStates[buttonName] = false
-            if _private.buttons[buttonName] 键，然后
+            if _private.buttons[buttonName] then
                 _private.buttons[buttonName].Text = buttonName..": "..tostring(false)
-                local defaultColor = Color3.new(0.8， 0.5， 1) -- 默认颜色，可以根据需要调整
+                local defaultColor = Color3.new(0.8, 0.5, 1) -- 默认颜色，可以根据需要调整
                 _private.buttons[buttonName].TextColor3 = defaultColor
             end
             
@@ -139,7 +139,7 @@ function inltree_Lin_UniversalUILib.createButton(name, position, color, callback
     button.BorderColor3 = buttonStyle.BorderColor3
     button.Parent = _private.screenGui
     
-    if callback then
+    if callback 键，然后
         button.MouseButton1Click:Connect(function()
             pcall(callback)
         end)
@@ -156,12 +156,12 @@ end
 function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultColor, initialState)
     local button = inltree_Lin_UniversalUILib.createButton(name..": "..tostring(initialState or false), position, defaultColor)
     
-    _private.buttonStates[name] = initialState or false
+    _private.buttonStates[name] = initialState 或 false
     
     button.MouseButton1Click:Connect(function()
         _private.buttonStates[name] = not _private.buttonStates[name]
         button.Text = name..": "..tostring(_private.buttonStates[name])
-        button.TextColor3 = _private.buttonStates[name] and Color3.new(0, 1, 0) or defaultColor
+        button.TextColor3 = _private.buttonStates[name] 和 Color3.new(0, 1, 0) or defaultColor
         
         print("🟢 "..name..": "..tostring(_private.buttonStates[name]))
         
@@ -169,7 +169,7 @@ function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultCo
         triggerToggleCallbacks(name, _private.buttonStates[name])
         
         -- 执行注册的功能回调
-        if _private.activeFunctions[name] then
+        if _private.activeFunctions[name] 键，然后
             if _private.buttonStates[name] and _private.activeFunctions[name].enable then
                 pcall(_private.activeFunctions[name].enable)
             elseif not _private.buttonStates[name] and _private.activeFunctions[name].disable then
@@ -186,7 +186,7 @@ function inltree_Lin_UniversalUILib.setButtonState(name, state)
     if _private.buttons[name] and _private.buttonStates[name] ~= nil then
         _private.buttonStates[name] = state
         _private.buttons[name].Text = name..": "..tostring(state)
-        _private.buttons[name].TextColor3 = state and Color3.new(0, 1, 0) or inltree_Lin_UniversalUILib.getButtonStyle().TextColor3
+        _private.buttons[name].TextColor3 = state 和 Color3.new(0, 1, 0) or inltree_Lin_UniversalUILib.getButtonStyle().TextColor3
         
         -- 触发状态改变回调
         triggerToggleCallbacks(name, state)
@@ -214,7 +214,7 @@ function inltree_Lin_UniversalUILib.initDrag()
         
         local delta = input.Position - _private.dragStart
         
-        for button, startPos in pairs(_private.startPositions) do
+        for button, startPos 在 pairs(_private.startPositions) do
             button.Position = UDim2.new(
                 startPos.X.Scale, 
                 startPos.X.Offset + delta.X,
@@ -227,7 +227,7 @@ function inltree_Lin_UniversalUILib.initDrag()
     -- 设置拖动按钮（通常是隐藏/显示UI的按钮）
     if _private.buttons["隐藏UI"] then
         _private.buttons["隐藏UI"].InputBegan:Connect(function(input) 
-            if input.UserInputType == Enum.UserInputType.MouseButton1 或 input.UserInputType == Enum.UserInputType.Touch 键，然后 
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
                 _private.dragging = true 
                 _private.dragStart = input.Position
                 
@@ -244,7 +244,7 @@ function inltree_Lin_UniversalUILib.initDrag()
         end)
         
         _private.buttons["隐藏UI"].InputChanged:Connect(function(input) 
-            if _private.dragging 和 (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
+            if _private.dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
                 _private.dragInput = input 
             end 
         end)
@@ -308,7 +308,7 @@ function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
         _private.mainUIButton:Destroy()
     end
     
-    buttonName = buttonName 或 "主面板"
+    buttonName = buttonName or "主面板"
     position = position or UDim2.new(0, 140, 0, 10)
     
     _private.mainUIButton = Instance.new("TextButton")
@@ -316,7 +316,7 @@ function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     _private.mainUIButton.Size = UDim2.new(0, 80, 0, 30)
     _private.mainUIButton.Position = position
     _private.mainUIButton.Text = buttonName
-    _private.mainUIButton.TextColor3 = Color3.new(1， 0.8, 0.2)
+    _private.mainUIButton.TextColor3 = Color3.new(1, 0.8, 0.2)
     _private.mainUIButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.3)
     _private.mainUIButton.BackgroundTransparency = 0.3
     _private.mainUIButton.Font = Enum.Font.SourceSansBold
@@ -374,7 +374,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     -- 创建子面板容器
     local menuFrame = Instance.new("Frame")
     menuFrame.Name = title .. "SubMenu"
-    menuFrame.Size = UDim2.new(0, 150, 0, 30)
+    menuFrame.Size = UDim2.new(0， 150, 0, 30)
     menuFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.25)
     menuFrame.BackgroundTransparency = 0.1
     menuFrame.BorderSizePixel = 1
@@ -392,7 +392,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     header.BackgroundTransparency = 1
     header.BorderSizePixel = 0
     header.Text = title
-    header.TextColor3 = Color3.new(1, 1, 1)
+    header.TextColor3 = Color3.new(1， 1, 1)
     header.TextSize = 14
     header.Font = Enum.Font.SourceSansBold
     header.Parent = menuFrame
@@ -429,7 +429,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         
         -- 按钮鼠标事件
         button.MouseEnter:Connect(function()
-            button.BackgroundColor3 = Color3.new(0.35， 0.35, 0.45)
+            button.BackgroundColor3 = Color3.new(0.35, 0.35, 0.45)
         end)
         
         button.MouseLeave:Connect(function()
@@ -452,9 +452,9 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         
         if isExpanded then
             menuFrame.Size = UDim2.new(0, 150, 0, 30 + #options * 28)
-            contentFrame.Size = UDim2.new(1， 0, 0, #options * 28)
+            contentFrame.Size = UDim2.new(1, 0, 0, #options * 28)
         else
-            menuFrame.Size = UDim2.new(0， 150, 0, 30)
+            menuFrame.Size = UDim2.new(0, 150, 0, 30)
             contentFrame.Size = UDim2.new(1, 0, 0, 0)
         end
     end
