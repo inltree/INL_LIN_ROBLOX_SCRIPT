@@ -90,7 +90,7 @@ end
 
 -- 关闭所有活跃功能
 function inltree_Lin_UniversalUILib.disableAllFunctions()
-    print("🟡 正在关闭所有功能...")
+    print("🟡 正在关闭全部功能...")
     
     for buttonName, state in pairs(_private.buttonStates) do
         if state == true then
@@ -106,8 +106,6 @@ function inltree_Lin_UniversalUILib.disableAllFunctions()
             if _private.activeFunctions[buttonName] and _private.activeFunctions[buttonName].disable then
                 pcall(_private.activeFunctions[buttonName].disable)
                 print("🔴 已关闭功能: "..buttonName)
-            else
-                print("🔴 已设置状态为关闭: "..buttonName)
             end
             
             -- 触发状态改变回调
@@ -115,7 +113,7 @@ function inltree_Lin_UniversalUILib.disableAllFunctions()
         end
     end
     
-    print("🟢 所有功能已关闭")
+    print("🟢 全部功能已关闭")
 end
 
 -- 创建按钮
@@ -288,8 +286,8 @@ function inltree_Lin_UniversalUILib.openConsole()
     print("🟢 Console opened: true")
 end
 
--- 创建默认UI布局
-function inltree_Lin_UniversalUILib.createDefaultUI()
+-- 创建基础UI布局（只包含基础功能按钮）
+function inltree_Lin_UniversalUILib.createBaseUI()
     -- 创建隐藏UI按钮
     inltree_Lin_UniversalUILib.createButton("隐藏UI", UDim2.new(0, 10, 0, 10), Color3.new(1, 0.5, 0), function()
         inltree_Lin_UniversalUILib.toggleUI()
@@ -305,12 +303,6 @@ function inltree_Lin_UniversalUILib.createDefaultUI()
         inltree_Lin_UniversalUILib.openConsole()
     end)
     
-    -- 创建模板按钮
-    inltree_Lin_UniversalUILib.createToggleButton("模板按钮一", UDim2.new(0, 140, 0, 10), Color3.new(0.8, 0.5, 1), false)
-    inltree_Lin_UniversalUILib.createToggleButton("模板按钮二", UDim2.new(0, 140, 0, 50), Color3.new(1, 0.84, 0), false)
-    inltree_Lin_UniversalUILib.createToggleButton("模板按钮三", UDim2.new(0, 140, 0, 90), Color3.new(1, 0.5, 0), false)
-    inltree_Lin_UniversalUILib.createToggleButton("模板按钮四", UDim2.new(0, 140, 0, 130), Color3.new(0.5, 0.8, 1), false)
-    
     -- 初始化拖动功能
     inltree_Lin_UniversalUILib.initDrag()
     
@@ -318,11 +310,11 @@ function inltree_Lin_UniversalUILib.createDefaultUI()
     task.wait(0.5)
     _private.StarterGui:SetCore("SendNotification", {
         Title = _private.gameName,
-        Text = _private.gameName.."｜地图名称(中文)｜加载完成",
+        Text = _private.gameName.."｜基础UI加载完成",
         Duration = 3
     })
     
-    warn("\n"..(("="):rep(40).."\n- 脚本名称: ".._private.gameName.."\n- 描述: 面板模板\n- 版本: 1.0.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
+    warn("\n"..(("="):rep(40).."\n- 脚本名称: ".._private.gameName.."\n- 描述: 基础UI面板\n- 版本: 1.0.0\n- 作者: inltree｜Lin×DeepSeek\n"..("="):rep(40)))
 end
 
 -- 重置库状态
