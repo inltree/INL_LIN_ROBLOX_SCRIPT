@@ -24,9 +24,13 @@ local _private = {
     gameName = "",
     activeFunctions = {}, -- 存储活跃功能的回调函数
     onToggleChangeCallbacks = {}, -- 存储状态改变回调
-    mainUIButton = nil, -- 主UI按钮
-    subMenus = {}, -- 存储子菜单
-    subMenuStates = {} -- 存储子菜单状态
+    mainUIButton = nil, -- 面板按钮
+    subMenus = {}, -- 存储子面板
+    subMenuStates = {}, -- 存储子面板状态
+    savedPositions = {}, -- 存储所有UI元素的位置
+    savedSizes = {}, -- 存储所有UI元素的大小
+    longPressThreshold = 0.5, -- 长按阈值（秒）
+    longPressTimers = {} -- 长按计时器
 }
 
 -- 初始化库
@@ -64,6 +68,26 @@ function inltree_Lin_UniversalUILib.getButtonStyle()
         BorderSizePixel = 1,
         BorderColor3 = Color3.new(0.8, 0.8, 0.8)
     }
+end
+
+-- 保存UI元素位置
+local function saveUIPosition(uiElement, name)
+    if uiElement 和 name then
+        _private.savedPositions[name] = uiElement.Position
+        if uiElement:IsA("Frame") then
+            _private.savedSizes[name] = uiElement.Size
+        end
+    end
+end
+
+-- 恢复UI元素位置
+local function restoreUIPosition(uiElement, name)
+    if uiElement and name and _private.savedPositions[name] then
+        uiElement.Position = _private.savedPositions[name]
+        if uiElement:IsA("Frame") and _private.savedSizes[name] then
+            uiElement.Size = _private.savedSizes[name]
+        end
+    end
 end
 
 -- 注册功能回调
@@ -139,7 +163,7 @@ function inltree_Lin_UniversalUILib.createButton(name, position, color, callback
     button.BorderColor3 = buttonStyle.BorderColor3
     button.Parent = _private.screenGui
     
-    if callback then
+    if callback 键，然后
         button.MouseButton1Click:Connect(function()
             pcall(callback)
         end)
@@ -149,6 +173,9 @@ function inltree_Lin_UniversalUILib.createButton(name, position, color, callback
     _private.buttons[name] = button
     _private.startPositions[button] = position
     
+    -- 保存位置
+    saveUIPosition(button, name)
+    
     return button
 end
 
@@ -156,7 +183,7 @@ end
 function inltree_Lin_UniversalUILib.createToggleButton(name, position, defaultColor, initialState)
     local button = inltree_Lin_UniversalUILib.createButton(name..": "..tostring(initialState or false), position, defaultColor)
     
-    _private.buttonStates[name] = initialState or false
+    _private.buttonStates[name] = initialState 或 false
     
     button.MouseButton1Click:Connect(function()
         _private.buttonStates[name] = not _private.buttonStates[name]
@@ -221,13 +248,15 @@ function inltree_Lin_UniversalUILib.initDrag()
                 startPos.Y.Scale,
                 startPos.Y.Offset + delta.Y
             )
+            -- 保存新位置
+            saveUIPosition(button, button.Name)
         end
     end
     
     -- 设置拖动按钮（通常是隐藏/显示UI的按钮）
     if _private.buttons["隐藏UI"] then
         _private.buttons["隐藏UI"].InputBegan:Connect(function(input) 
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+            if input.UserInputType == Enum.UserInputType.MouseButton1 或 input.UserInputType == Enum.UserInputType.Touch then 
                 _private.dragging = true 
                 _private.dragStart = input.Position
                 
@@ -251,7 +280,7 @@ function inltree_Lin_UniversalUILib.initDrag()
     end
     
     _private.UserInputService.InputChanged:Connect(function(input) 
-        if _private.dragging and input == _private.dragInput then 
+        if _private.dragging 和 input == _private.dragInput 键，然后 
             updatePos(input) 
         end 
     end)
@@ -259,21 +288,42 @@ end
 
 -- 隐藏/显示UI
 function inltree_Lin_UniversalUILib.toggleUI()
+    -- 保存当前所有子面板的状态
+    local savedSubMenuStates = {}
+    for title, menu in pairs(_private.subMenus) do
+        savedSubMenuStates[title] = {
+            visible = menu.Visible,
+            position = menu.Position,
+            size = menu.Size
+        }
+    end
+    
     _private.isHidden = not _private.isHidden
+    
     for name, button in pairs(_private.buttons) do
         if name ~= "隐藏UI" then
             button.Visible = not _private.isHidden
         end
     end
     
-    -- 同时隐藏/显示主UI按钮
+    -- 同时隐藏/显示面板按钮
     if _private.mainUIButton then
         _private.mainUIButton.Visible = not _private.isHidden
     end
     
-    -- 同时隐藏/显示所有子菜单
-    for _, subMenu in pairs(_private.subMenus) do
-        subMenu.Visible = not _private.isHidden
+    -- 同时隐藏/显示所有子面板，并恢复之前的状态
+    for title, menu in pairs(_private.subMenus) do
+        if not _private.isHidden then
+            -- 显示时恢复之前的状态
+            menu.Visible = savedSubMenuStates[title] 和 savedSubMenuStates[title].visible or false
+            if savedSubMenuStates[title] then
+                menu.Position = savedSubMenuStates[title].position
+                menu.Size = savedSubMenuStates[title].size
+            end
+        else
+            -- 隐藏时保存当前状态
+            menu.Visible = false
+        end
     end
     
     _private.buttons["隐藏UI"].Text = _private.isHidden and "显示UI" or "隐藏UI"
@@ -302,13 +352,86 @@ function inltree_Lin_UniversalUILib.openConsole()
     print("🟢 Console opened: true")
 end
 
--- 创建主UI按钮（可自定义名称）
+-- 通用拖动函数
+local function setupDrag(uiElement, elementName)
+    local dragInput, dragStart, startPos
+    
+    -- 长按计时器
+    local pressStartTime = 0
+    local isLongPressing = false
+    
+    local function updatePos(input)
+        if not dragStart then return end
+        
+        local delta = input.Position - dragStart
+        uiElement.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+        -- 保存位置
+        saveUIPosition(uiElement, elementName)
+    end
+    
+    uiElement.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            pressStartTime = tick()
+            isLongPressing = false
+            
+            -- 启动长按检测
+            _private.longPressTimers[elementName] = task.delay(_private.longPressThreshold, function()
+                isLongPressing = true
+                dragStart = input.Position
+                startPos = uiElement.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragInput = nil
+                        isLongPressing = false
+                    end
+                end)
+            end)
+        end
+    end)
+    
+    uiElement.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            -- 取消长按计时器
+            if _private.longPressTimers[elementName] then
+                task.cancel(_private.longPressTimers[elementName])
+                _private.longPressTimers[elementName] = nil
+            end
+            
+            if isLongPressing then
+                dragInput = nil
+                isLongPressing = false
+            end
+        end
+    end)
+    
+    uiElement.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if isLongPressing then
+                dragInput = input
+            end
+        end
+    end)
+    
+    _private.UserInputService.InputChanged:Connect(function(input)
+        if dragInput and input == dragInput and isLongPressing then
+            updatePos(input)
+        end
+    end)
+end
+
+-- 创建面板按钮（可自定义名称）
 function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     if _private.mainUIButton then
         _private.mainUIButton:Destroy()
     end
     
-    buttonName = buttonName or "主菜单"
+    buttonName = buttonName or "主面板"
     position = position or UDim2.new(0, 140, 0, 10)
     
     _private.mainUIButton = Instance.new("TextButton")
@@ -325,46 +448,18 @@ function inltree_Lin_UniversalUILib.createMainUIButton(buttonName, position)
     _private.mainUIButton.BorderColor3 = Color3.new(0.8, 0.8, 0.8)
     _private.mainUIButton.Parent = _private.screenGui
     
-    -- 主UI按钮拖动功能
-    local mainDragInput, mainDragStart, mainStartPos
+    -- 设置拖动功能
+    setupDrag(_private.mainUIButton, "MainUI")
     
-    _private.mainUIButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            mainDragStart = input.Position
-            mainStartPos = _private.mainUIButton.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    mainDragInput = nil
-                end
-            end)
-        end
-    end)
-    
-    _private.mainUIButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            mainDragInput = input
-        end
-    end)
-    
-    _private.UserInputService.InputChanged:Connect(function(input)
-        if mainDragInput and input == mainDragInput then
-            local delta = input.Position - mainDragStart
-            _private.mainUIButton.Position = UDim2.new(
-                mainStartPos.X.Scale, 
-                mainStartPos.X.Offset + delta.X,
-                mainStartPos.Y.Scale,
-                mainStartPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+    -- 保存位置
+    saveUIPosition(_private.mainUIButton, "MainUI")
     
     return _private.mainUIButton
 end
 
--- 创建悬浮子菜单（取消动画和圆角）
+-- 创建悬浮子面板
 function inltree_Lin_UniversalUILib.createSubMenu(title, options)
-    -- 如果子菜单已存在，则切换显示状态
+    -- 如果子面板已存在，则切换显示状态
     if _private.subMenus[title] then
         local menu = _private.subMenus[title]
         menu.Visible = not menu.Visible
@@ -372,7 +467,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         return menu
     end
     
-    -- 创建子菜单容器
+    -- 创建子面板容器
     local menuFrame = Instance.new("Frame")
     menuFrame.Name = title .. "SubMenu"
     menuFrame.Size = UDim2.new(0, 150, 0, 30)
@@ -385,7 +480,10 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     menuFrame.Visible = false
     menuFrame.Parent = _private.screenGui
     
-    -- 标题栏（可拖动区域）
+    -- 设置拖动功能（整个面板）
+    setupDrag(menuFrame, title .. "SubMenu")
+    
+    -- 标题栏
     local header = Instance.new("TextButton")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 30)
@@ -398,6 +496,9 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     header.Font = Enum.Font.SourceSansBold
     header.Parent = menuFrame
     
+    -- 设置拖动功能（标题栏）
+    setupDrag(header, title .. "Header")
+    
     -- 内容容器
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "Content"
@@ -407,10 +508,13 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = menuFrame
     
+    -- 设置拖动功能（内容容器）
+    setupDrag(contentFrame, title .. "Content")
+    
     local optionButtons = {}
     local isExpanded = false
     
-    -- 创建菜单选项按钮
+    -- 创建面板选项按钮
     for i, option in ipairs(options) do
         local button = Instance.new("TextButton")
         button.Name = option.Name
@@ -427,6 +531,9 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         button.TextXAlignment = Enum.TextXAlignment.Center
         button.ZIndex = 6
         button.Parent = contentFrame
+        
+        -- 设置拖动功能（选项按钮）
+        setupDrag(button, title .. "Option_" .. option.Name)
         
         -- 按钮鼠标事件
         button.MouseEnter:Connect(function()
@@ -447,7 +554,7 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
         table.insert(optionButtons, button)
     end
     
-    -- 展开/收起菜单函数
+    -- 展开/收起面板函数
     local function toggleMenu()
         isExpanded = not isExpanded
         
@@ -458,46 +565,14 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
             menuFrame.Size = UDim2.new(0, 150, 0, 30)
             contentFrame.Size = UDim2.new(1, 0, 0, 0)
         end
+        -- 保存大小
+        saveUIPosition(menuFrame, title .. "SubMenu")
     end
     
-    -- 标题栏点击事件（展开/收起）
+    -- 标题栏点击事件
     header.MouseButton1Click:Connect(toggleMenu)
     
-    -- 子菜单拖动功能
-    local dragInput, dragStart, startPos
-    
-    header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragStart = input.Position
-            startPos = menuFrame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragInput = nil
-                end
-            end)
-        end
-    end)
-    
-    header.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    
-    _private.UserInputService.InputChanged:Connect(function(input)
-        if dragInput and input == dragInput then
-            local delta = input.Position - dragStart
-            menuFrame.Position = UDim2.new(
-                startPos.X.Scale, 
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    -- 设置初始位置在主UI按钮旁边
+    -- 设置初始位置在面板按钮旁边
     if _private.mainUIButton then
         local mainPos = _private.mainUIButton.AbsolutePosition
         local mainSize = _private.mainUIButton.AbsoluteSize
@@ -505,6 +580,9 @@ function inltree_Lin_UniversalUILib.createSubMenu(title, options)
     else
         menuFrame.Position = UDim2.new(0, 230, 0, 10)
     end
+    
+    -- 保存位置
+    saveUIPosition(menuFrame, title .. "SubMenu")
     
     _private.subMenus[title] = menuFrame
     _private.subMenuStates[title] = false
@@ -518,11 +596,11 @@ function inltree_Lin_UniversalUILib.createBaseUI()
         inltree_Lin_UniversalUILib.toggleUI()
     end)
     
-    inltree_Lin_UniversalUILib.createButton("关闭UI", UDim2.new(0, 10, 0, 30), Color3.new(1, 0, 0), function()
+    inltree_Lin_UniversalUILib.createButton("关闭UI", UDim2.new(0, 10, 0, 45), Color3.new(1, 0, 0), function()
         inltree_Lin_UniversalUILib.closeUI()
     end)
     
-    inltree_Lin_UniversalUILib.createButton("控制台", UDim2.new(0, 10, 0, 50), Color3.new(1, 1, 0.5), function()
+    inltree_Lin_UniversalUILib.createButton("控制台", UDim2.new(0, 10, 0, 80), Color3.new(1, 1, 0.5), function()
         inltree_Lin_UniversalUILib.openConsole()
     end)
     
@@ -561,6 +639,9 @@ function inltree_Lin_UniversalUILib.reset()
     _private.mainUIButton = nil
     _private.subMenus = {}
     _private.subMenuStates = {}
+    _private.savedPositions = {}
+    _private.savedSizes = {}
+    _private.longPressTimers = {}
     
     -- 重新初始化
     return inltree_Lin_UniversalUILib.init()
@@ -572,11 +653,13 @@ function inltree_Lin_UniversalUILib.getState()
         buttonStates = _private.buttonStates,
         isHidden = _private.isHidden,
         gameName = _private.gameName,
-        subMenuStates = _private.subMenuStates
+        subMenuStates = _private.subMenuStates,
+        savedPositions = _private.savedPositions,
+        savedSizes = _private.savedSizes
     }
 end
 
--- 获取主UI按钮（公开方法）
+-- 获取主面板
 function inltree_Lin_UniversalUILib.getMainUIButton()
     return _private.mainUIButton
 end
