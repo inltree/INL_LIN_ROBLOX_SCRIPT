@@ -4,49 +4,56 @@
 
 local MCTechGUILib = {}
 
--- 私有属性表
-local private = {
+-- 私有属性
+local Private = {
     Players = game:GetService("Players"),
     UserInputService = game:GetService("UserInputService"),
-    TweenService = game::GetService("TweenService"),
+    TweenService = game:GetService("TweenService"),
     RunService = game:GetService("RunService"),
-    player = nil,
-    playerGui = nil,
-    screenGui = nil,
-    subMenus = {},
-    subMenuStates = {},
-    detailWindows = {},
-    detailStates = {},
-    notificationQueue = {},
-    activeNotifications = {},
-    activeFeatures = {},
-    featureStatusContainer = nil,
-    showFeatureStatus = true,
-    excludedMenus = {
+    Player = nil,
+    PlayerGui = nil,
+    ScreenGui = nil,
+    SubMenus = {},
+    SubMenuStates = {},
+    DetailWindows = {},
+    DetailStates = {},
+    NotificationQueue = {},
+    ActiveNotifications = {},
+    ActiveFeatures = {},
+    FeatureStatusContainer = nil,
+    ShowFeatureStatus = true,
+    ExcludedMenus = {
         ["设置"] = true,
         ["显示功能状态"] = true
     }
 }
 
--- 初始化库
-function MCTechGUILib.init()
-    private.player = private.Players.LocalPlayer
-    private.playerGui = private.player:WaitForChild("PlayerGui")
+--[[
+    初始化库
+    @return MCTechGUILib - 库实例
+]]
+function MCTechGUILib.Init()
+    Private.Player = Private.Players.LocalPlayer
+    Private.PlayerGui = Private.Player:WaitForChild("PlayerGui")
     
     -- 创建主ScreenGui
-    if not private.screenGui then
-        private.screenGui = Instance.new("ScreenGui")
-        private.screenGui.Name = "MCTechGUI"
-        private.screenGui.ResetOnSpawn = false
-        private.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        private.screenGui.Parent = private.playerGui
+    if not Private.ScreenGui then
+        Private.ScreenGui = Instance.new("ScreenGui")
+        Private.ScreenGui.Name = "MCTechGUI"
+        Private.ScreenGui.ResetOnSpawn = false
+        Private.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        Private.ScreenGui.Parent = Private.PlayerGui
     end
     
     return MCTechGUILib
 end
 
--- 粉蓝渐变色配置
-function MCTechGUILib.createPinkBlueGradientEffect(frame)
+--[[
+    创建粉蓝渐变色配置
+    @param frame Frame - 要应用渐变效果的框架
+    @return UIGradient - 渐变对象
+]]
+function MCTechGUILib.CreatePinkBlueGradientEffect(frame)
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 105, 180)), -- 粉色
@@ -58,7 +65,7 @@ function MCTechGUILib.createPinkBlueGradientEffect(frame)
     gradient.Parent = frame
     
     -- 创建缓慢旋转动画
-    local rotationTween = private.TweenService:Create(
+    local rotationTween = Private.TweenService:Create(
         gradient,
         TweenInfo.new(8, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
         {Rotation = 405} -- 360度 + 45度初始角度
@@ -68,13 +75,17 @@ function MCTechGUILib.createPinkBlueGradientEffect(frame)
     return gradient
 end
 
--- 创建粉蓝渐变边框效果
-function MCTechGUILib.createPinkBlueStrokeEffect(stroke)
+--[[
+    创建粉蓝渐变边框效果
+    @param stroke UIStroke - 要应用效果的边框
+    @return Connection - 渐变效果连接
+]]
+function MCTechGUILib.CreatePinkBlueStrokeEffect(stroke)
     local gradientSpeed = 0.5
     local time = 0
     
     local connection
-    connection = private.RunService.Heartbeat:Connect(function(dt)
+    connection = Private.RunService.Heartbeat:Connect(function(dt)
         if not stroke.Parent then
             connection:Disconnect()
             return
@@ -100,17 +111,20 @@ function MCTechGUILib.createPinkBlueStrokeEffect(stroke)
     return connection
 end
 
--- 创建功能状态显示容器
-function MCTechGUILib.createFeatureStatusContainer()
-    private.featureStatusContainer = Instance.new("Frame")
-    private.featureStatusContainer.Name = "FeatureStatusContainer"
-    private.featureStatusContainer.Size = UDim2.new(0, 200, 0, 0)
-    private.featureStatusContainer.Position = UDim2.new(1, -220, 0, 20) -- 确保在右上角
-    private.featureStatusContainer.BackgroundTransparency = 1
-    private.featureStatusContainer.BorderSizePixel = 0
-    private.featureStatusContainer.ClipsDescendants = false
-    private.featureStatusContainer.Visible = private.showFeatureStatus
-    private.featureStatusContainer.Parent = private.screenGui
+--[[
+    创建功能状态显示容器
+    @return Frame - 功能状态容器
+]]
+function MCTechGUILib.CreateFeatureStatusContainer()
+    Private.FeatureStatusContainer = Instance.new("Frame")
+    Private.FeatureStatusContainer.Name = "FeatureStatusContainer"
+    Private.FeatureStatusContainer.Size = UDim2.new(0, 200, 0, 0)
+    Private.FeatureStatusContainer.Position = UDim2.new(1, -220, 0, 20) -- 确保在右上角
+    Private.FeatureStatusContainer.BackgroundTransparency = 1
+    Private.FeatureStatusContainer.BorderSizePixel = 0
+    Private.FeatureStatusContainer.ClipsDescendants = false
+    Private.FeatureStatusContainer.Visible = Private.ShowFeatureStatus
+    Private.FeatureStatusContainer.Parent = Private.ScreenGui
     
     -- 添加自动布局
     local listLayout = Instance.new("UIListLayout")
@@ -118,13 +132,13 @@ function MCTechGUILib.createFeatureStatusContainer()
     listLayout.FillDirection = Enum.FillDirection.Vertical
     listLayout.Padding = UDim.new(0, 5)
     listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right -- 右对齐
-    listLayout.Parent = private.featureStatusContainer
+    listLayout.Parent = Private.FeatureStatusContainer
     
     -- 监听子项变化以更新最后一个项的圆角
     local function updateFeatureStatusCorners()
-        if not private.featureStatusContainer then return end
+        if not Private.FeatureStatusContainer then return end
         
-        local children = private.featureStatusContainer:GetChildren()
+        local children = Private.FeatureStatusContainer:GetChildren()
         local statusItems = {}
         for _, child in ipairs(children) do
             if child:IsA("TextLabel") then
@@ -132,7 +146,7 @@ function MCTechGUILib.createFeatureStatusContainer()
             end
         end
         
-        for _, item in ipairs(statusItems) do
+        for _, item 在 ipairs(statusItems) do
             local corner = item:FindFirstChildOfClass("UICorner")
             if corner then
                 corner:Destroy()
@@ -147,20 +161,25 @@ function MCTechGUILib.createFeatureStatusContainer()
         end
     end
     
-    private.featureStatusContainer.ChildAdded:Connect(updateFeatureStatusCorners)
-    private.featureStatusContainer.ChildRemoved:Connect(updateFeatureStatusCorners)
+    Private.FeatureStatusContainer.ChildAdded:Connect(updateFeatureStatusCorners)
+    Private.FeatureStatusContainer.ChildRemoved:Connect(updateFeatureStatusCorners)
     
-    return private.featureStatusContainer
+    return Private.FeatureStatusContainer
 end
 
--- 创建简化的渐变文字效果
-function MCTechGUILib.createSimpleGradientTextEffect(textLabel, featureName)
+--[[
+    创建简化的渐变文字效果
+    @param textLabel TextLabel - 要应用效果的文本标签
+    @param featureName string - 功能名称
+    @return Connection - 渐变效果连接
+]]
+function MCTechGUILib.CreateSimpleGradientTextEffect(textLabel, featureName)
     local time = 0
     local gradientSpeed = 1.2
     
     local connection
-    connection = private.RunService.Heartbeat:Connect(function(dt)
-        if not textLabel.Parent then
+    connection = Private.RunService.Heartbeat:Connect(function(dt)
+        if not textLabel.Parent 键，然后
             connection:Disconnect()
             return
         end
@@ -210,16 +229,34 @@ function MCTechGUILib.createSimpleGradientTextEffect(textLabel, featureName)
     return connection
 end
 
--- 添加功能状态显示项
-function MCTechGUILib.addFeatureStatusItem(featureName)
-    if not private.showFeatureStatus or not private.featureStatusContainer or private.excludedMenus[featureName] then
+--[[
+    添加功能状态显示项
+    @param featureName string - 功能名称
+    @return TextLabel|nil - 状态文本标签或nil
+]]
+function MCTechGUILib.AddFeatureStatusItem(featureName)
+    if not Private.ShowFeatureStatus or not Private.FeatureStatusContainer or Private.ExcludedMenus[featureName] then
         return nil
     end
+    
+    -- 创建状态项容器
+    local statusContainer = Instance.new("Frame")
+    statusContainer.Name = "StatusContainer_" .. featureName
+    statusContainer.Size = UDim2.new(0, 150, 0, 25) -- 增加高度以容纳背景
+    statusContainer.BackgroundColor3 = Color3.fromRGB(80, 80, 80) -- 浅灰色背景
+    statusContainer.BackgroundTransparency = 0.7 -- 半透明
+    statusContainer.BorderSizePixel = 0
+    statusContainer.Parent = Private.FeatureStatusContainer
+    
+    -- 添加圆角
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = statusContainer
     
     -- 创建纯文本标签
     local statusText = Instance.new("TextLabel")
     statusText.Name = "Status_" .. featureName
-    statusText.Size = UDim2.new(0, 150, 0, 18) -- 固定大小
+    statusText.Size = UDim2.new(1, 0, 1, 0) -- 填充容器
     statusText.BackgroundTransparency = 1 -- 完全透明背景
     statusText.BorderSizePixel = 0
     statusText.Text = featureName -- 只显示功能名称
@@ -229,124 +266,146 @@ function MCTechGUILib.addFeatureStatusItem(featureName)
     statusText.TextXAlignment = Enum.TextXAlignment.Right -- 右对齐
     statusText.TextStrokeTransparency = 0.5
     statusText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    statusText.Parent = private.featureStatusContainer
+    statusText.Parent = statusContainer
     
     -- 启动渐变文字效果
-    local gradientConnection = MCTechGUILib.createSimpleGradientTextEffect(statusText, featureName)
+    local gradientConnection = MCTechGUILib.CreateSimpleGradientTextEffect(statusText, featureName)
     
     -- 滑入动画
-    statusText.Position = UDim2.new(0, 200, 0, 0)
-    local slideInTween = private.TweenService:Create(
-        statusText,
+    statusContainer.Position = UDim2.new(0, 200, 0, 0)
+    local slideInTween = Private.TweenService:Create(
+        statusContainer,
         TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
         {Position = UDim2.new(0, 0, 0, 0)}
     )
     slideInTween:Play()
     
     -- 存储连接以便清理
-    statusText:SetAttribute("GradientConnection", gradientConnection)
+    statusContainer:SetAttribute("GradientConnection", gradientConnection)
     
     -- 更新容器大小
-    MCTechGUILib.updateFeatureStatusContainerSize()
+    MCTechGUILib.UpdateFeatureStatusContainerSize()
     
-    return statusText
+    return statusContainer
 end
 
--- 移除功能状态显示项
-function MCTechGUILib.removeFeatureStatusItem(featureName)
-    if not private.featureStatusContainer then
+--[[
+    移除功能状态显示项
+    @param featureName string - 功能名称
+]]
+function MCTechGUILib.RemoveFeatureStatusItem(featureName)
+    if not Private.FeatureStatusContainer then
         return
     end
     
-    local statusText = private.featureStatusContainer:FindFirstChild("Status_" .. featureName)
-    if statusText then
+    local statusContainer = Private.FeatureStatusContainer:FindFirstChild("StatusContainer_" .. featureName)
+    if statusContainer then
         -- 清理渐变效果连接
-        local gradientConnection = statusText:GetAttribute("GradientConnection")
+        local gradientConnection = statusContainer:GetAttribute("GradientConnection")
         if gradientConnection then
             gradientConnection:Disconnect()
         end
         
         -- 滑出动画
-        local slideOutTween = private.TweenService:Create(
-            statusText,
+        local slideOutTween = Private.TweenService:Create(
+            statusContainer,
             TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
             {
                 Position = UDim2.new(0, 200, 0, 0),
-                TextTransparency = 1,
-                TextStrokeTransparency = 1
+                BackgroundTransparency = 1
             }
         )
         
         slideOutTween:Play()
         slideOutTween.Completed:Connect(function()
-            statusText:Destroy()
-            MCTechGUILib.updateFeatureStatusContainerSize()
+            statusContainer:Destroy()
+            MCTechGUILib.UpdateFeatureStatusContainerSize()
         end)
     end
 end
 
--- 更新功能状态容器大小
-function MCTechGUILib.updateFeatureStatusContainerSize()
-    if not private.featureStatusContainer then
+--[[
+    更新功能状态容器大小
+]]
+function MCTechGUILib.UpdateFeatureStatusContainerSize()
+    if not Private.FeatureStatusContainer then
         return
     end
     
-    local childCount = #private.featureStatusContainer:GetChildren() - 1 -- 减去UIListLayout
-    local newHeight = math.max(0, childCount * 23 - 5) -- 18像素高度 + 5像素间距，最后一项不需要间距
+    local childCount = 0
+    for _, child in ipairs(Private.FeatureStatusContainer:GetChildren()) do
+        if child:IsA("Frame") and child.Name:find("StatusContainer_") then
+            childCount = childCount + 1
+        end
+    end
     
-    local sizeTween = private.TweenService:Create(
-        private.featureStatusContainer,
+    local newHeight = math.max(0, childCount * 30 - 5) -- 25像素高度 + 5像素间距，最后一项不需要间距
+    
+    local sizeTween = Private.TweenService:Create(
+        Private.FeatureStatusContainer,
         TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         {Size = UDim2.new(0, 200, 0, newHeight)}
     )
     sizeTween:Play()
 end
 
--- 切换功能状态显示
-function MCTechGUILib.toggleFeatureStatusDisplay(enabled)
-    private.showFeatureStatus = enabled
+--[[
+    切换功能状态显示
+    @param enabled boolean - 是否启用
+]]
+function MCTechGUILib.ToggleFeatureStatusDisplay(enabled)
+    Private.ShowFeatureStatus = enabled
     
-    if private.featureStatusContainer then
-        private.featureStatusContainer.Visible = enabled
+    if Private.FeatureStatusContainer then
+        Private.FeatureStatusContainer.Visible = enabled
         
         if enabled then
             -- 重新显示所有激活的功能
-            for featureName, _ in pairs(private.activeFeatures) do
-                if not private.featureStatusContainer:FindFirstChild("Status_" .. featureName) and not private.excludedMenus[featureName] then
-                    MCTechGUILib.addFeatureStatusItem(featureName)
+            for featureName, _ 在 pairs(Private.ActiveFeatures) do
+                if not Private.FeatureStatusContainer:FindFirstChild("StatusContainer_" .. featureName) and not Private.ExcludedMenus[featureName] then
+                    MCTechGUILib.AddFeatureStatusItem(featureName)
                 end
             end
         end
-        MCTechGUILib.updateFeatureStatusContainerSize()
-    elseif enabled then
+        MCTechGUILib.UpdateFeatureStatusContainerSize()
+    elseif enabled 键，然后
         -- 如果容器不存在但需要显示，创建它
-        MCTechGUILib.createFeatureStatusContainer()
-        for featureName, _ in pairs(private.activeFeatures) do
-            if not private.excludedMenus[featureName] then
-                MCTechGUILib.addFeatureStatusItem(featureName)
+        MCTechGUILib.CreateFeatureStatusContainer()
+        for featureName, _ in pairs(Private.ActiveFeatures) do
+            if not Private.ExcludedMenus[featureName] then
+                MCTechGUILib.AddFeatureStatusItem(featureName)
             end
         end
-        MCTechGUILib.updateFeatureStatusContainerSize()
+        MCTechGUILib.UpdateFeatureStatusContainerSize()
     end
 end
 
--- 更新功能状态
-function MCTechGUILib.updateFeatureStatus(featureName, isActive)
+--[[
+    更新功能状态
+    @param featureName string - 功能名称
+    @param isActive boolean - 是否激活
+]]
+function MCTechGUILib.UpdateFeatureStatus(featureName, isActive)
     if isActive then
-        private.activeFeatures[featureName] = true
-        if private.showFeatureStatus and not private.excludedMenus[featureName] then
-            MCTechGUILib.addFeatureStatusItem(featureName)
-            MCTechGUILib.updateFeatureStatusContainerSize()
+        Private.ActiveFeatures[featureName] = true
+        if Private.ShowFeatureStatus 和 not Private.ExcludedMenus[featureName] then
+            MCTechGUILib.AddFeatureStatusItem(featureName)
+            MCTechGUILib.UpdateFeatureStatusContainerSize()
         end
     else
-        private.activeFeatures[featureName] = nil
-        MCTechGUILib.removeFeatureStatusItem(featureName)
-        MCTechGUILib.updateFeatureStatusContainerSize()
+        Private.ActiveFeatures[featureName] = nil
+        MCTechGUILib.RemoveFeatureStatusItem(featureName)
+        MCTechGUILib.UpdateFeatureStatusContainerSize()
     end
 end
 
--- 显示通知
-function MCTechGUILib.showNotification(title, message, isEnabled)
+--[[
+    显示通知
+    @param title string - 通知标题
+    @param message string - 通知消息
+    @param isEnabled boolean - 是否启用状态
+]]
+function MCTechGUILib.ShowNotification(title, message, isEnabled)
     -- 创建通知容器
     local notification = Instance.new("Frame")
     notification.Name = "Notification"
@@ -356,7 +415,7 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
     notification.BorderSizePixel = 0
     notification.ClipsDescendants = false
     notification.ZIndex = 10 -- 高层级，确保通知在其他UI上方
-    notification.Parent = private.screenGui
+    notification.Parent = Private.ScreenGui
     
     -- 添加圆角
     local corner = Instance.new("UICorner")
@@ -364,7 +423,7 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
     corner.Parent = notification
     
     -- 添加粉蓝渐变背景
-    MCTechGUILib.createPinkBlueGradientEffect(notification)
+    MCTechGUILib.CreatePinkBlueGradientEffect(notification)
     
     -- 添加粉蓝渐变边框
     local stroke = Instance.new("UIStroke")
@@ -373,7 +432,7 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
     stroke.Parent = notification
     
     -- 启动粉蓝渐变边框效果
-    local strokeConnection = MCTechGUILib.createPinkBlueStrokeEffect(stroke)
+    local strokeConnection = MCTechGUILib.CreatePinkBlueStrokeEffect(stroke)
     
     -- 标题文本
     local titleLabel = Instance.new("TextLabel")
@@ -420,21 +479,21 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
     
     -- 设置初始位置（在屏幕右侧外）
     local screenSize = workspace.CurrentCamera.ViewportSize
-    notification.Position = UDim2.new(0, screenSize.X, 1, -60 - (#private.activeNotifications * 50))
+    notification.Position = UDim2.new(0, screenSize.X, 1, -60 - (#Private.ActiveNotifications * 50))
     
     -- 添加到活跃通知列表
-    table.insert(private.activeNotifications, notification)
+    table.insert(Private.ActiveNotifications, notification)
     
     -- 计算出现时间（每个通知延迟0.2秒出现，避免重叠）
-    local appearDelay = #private.activeNotifications * 0.2
+    local appearDelay = #Private.ActiveNotifications * 0.2
     
     task.wait(appearDelay)
     
     -- 滑入动画
-    local slideInTween = private.TweenService:Create(
+    local slideInTween = Private.TweenService:Create(
         notification,
         TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        {Position = UDim2.new(1, -190, 1, -60 - ((#private.activeNotifications - 1) * 50))}
+        {Position = UDim2.new(1, -190, 1, -60 - ((#Private.ActiveNotifications - 1) * 50))}
     )
     
     slideInTween:Play()
@@ -443,10 +502,10 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
     task.wait(2)
     
     -- 滑出动画
-    local slideOutTween = private.TweenService:Create(
+    local slideOutTween = Private.TweenService:Create(
         notification,
         TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-        {Position = UDim2.new(1, 50, 1, -60 - ((#private.activeNotifications - 1) * 50))}
+        {Position = UDim2.new(1, 50, 1, -60 - ((#Private.ActiveNotifications - 1) * 50))}
     )
     
     slideOutTween:Play()
@@ -458,9 +517,9 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
         end
         
         -- 从活跃通知列表中移除
-        for i, notif in ipairs(private.activeNotifications) do
+        for i, notif in ipairs(Private.ActiveNotifications) do
             if notif == notification then
-                table.remove(private.activeNotifications, i)
+                table.remove(Private.ActiveNotifications, i)
                 break
             end
         end
@@ -468,29 +527,35 @@ function MCTechGUILib.showNotification(title, message, isEnabled)
         notification:Destroy()
         
         -- 重新排列剩余通知
-        for i, notif in ipairs(private.activeNotifications) do
-            local repositionTween = private.TweenService:Create(
+        for i, notif 在 ipairs(Private.ActiveNotifications) do
+            local repositionTween = Private.TweenService:Create(
                 notif,
                 TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Position = UDim2.new(1, -190, 1, -60 - ((i - 1) * 50))}
+                {Position = UDim2.new(1, -190， 1, -60 - ((i - 1) * 50))}
             )
             repositionTween:Play()
         end
     end)
 end
 
--- 创建细节调整窗口
-function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
+--[[
+    创建细节调整窗口
+    @param title string - 窗口标题
+    @param parentButton TextButton - 父按钮
+    @param onValueChange function - 值变化回调
+    @return Frame - 细节窗口
+]]
+function MCTechGUILib.CreateDetailWindow(title, parentButton, onValueChange)
     -- 创建窗口容器
     local detailFrame = Instance.new("Frame")
     detailFrame.Name = title .. "Detail"
     detailFrame.Size = UDim2.new(0, 250, 0, 150) -- 增加宽度以扩大拉条范围
-    detailFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    detailFrame.BackgroundColor3 = Color3.fromRGB(30， 30, 40)
     detailFrame.BackgroundTransparency = 0.1
     detailFrame.BorderSizePixel = 0
     detailFrame.ClipsDescendants = true
     detailFrame.ZIndex = 7 -- 高于菜单层级
-    detailFrame.Parent = private.screenGui
+    detailFrame.Parent = Private.ScreenGui
     
     -- 添加圆角
     local detailCorner = Instance.new("UICorner")
@@ -498,7 +563,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     detailCorner.Parent = detailFrame
     
     -- 添加粉蓝渐变背景
-    MCTechGUILib.createPinkBlueGradientEffect(detailFrame)
+    MCTechGUILib.CreatePinkBlueGradientEffect(detailFrame)
     
     -- 添加粉蓝渐变边框
     local detailStroke = Instance.new("UIStroke")
@@ -507,13 +572,13 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     detailStroke.Parent = detailFrame
     
     -- 启动粉蓝渐变边框效果
-    MCTechGUILib.createPinkBlueStrokeEffect(detailStroke)
+    MCTechGUILib.CreatePinkBlueStrokeEffect(detailStroke)
     
     -- 标题栏（可拖动区域）
     local header = Instance.new("TextButton")
     header.Name = "Header"
     header.Size = UDim2.new(1, 0, 0, 30)
-    header.Position = UDim2.new(0, 0, 0, 0)
+    header.Position = UDim2.new(0， 0, 0, 0)
     header.BackgroundTransparency = 1
     header.BorderSizePixel = 0
     header.Text = title .. " 设置"
@@ -521,14 +586,14 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     header.TextSize = 16
     header.Font = Enum.Font.GothamBold
     header.TextStrokeTransparency = 0.7
-    header.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    header.TextStrokeColor3 = Color3.fromRGB(0， 0, 0)
     header.Parent = detailFrame
     
     -- 内容容器
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "Content"
-    contentFrame.Size = UDim2.new(1, 0, 1, -30)
-    contentFrame.Position = UDim2.new(0, 0, 0, 30)
+    contentFrame.Size = UDim2.new(1， 0， 1, -30)
+    contentFrame.Position = UDim2.new(0， 0， 0， 30)
     contentFrame.BackgroundTransparency = 1
     contentFrame.BorderSizePixel = 0
     contentFrame.Parent = detailFrame
@@ -555,21 +620,21 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     sliderTrack.Parent = contentFrame
     
     local sliderKnob = Instance.new("Frame")
-    sliderKnob.Size = UDim2.new(0, 12, 0, 12)
-    sliderKnob.Position = UDim2.new(0, 0, 0.5, -3)
-    sliderKnob.BackgroundColor极 = Color3.fromRGB(255, 255, 255)
+    sliderKnob.Size = UDim2.new(0， 12， 0, 12)
+    sliderKnob.Position = UDim2.new(0, 0， 0.5, -3)
+    sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     sliderKnob.BorderSizePixel = 0
     local knobCorner = Instance.new("UICorner")
-    knobCorner.CornerRadius = UDim.new(0, 6)
+    knobCorner.CornerRadius = UDim.new(0， 6)
     knobCorner.Parent = sliderKnob
     sliderKnob.Parent = sliderTrack
     
     local sliderValue = Instance.new("TextLabel")
-    slider极.Size = UDim2.new(0, 30, 0, 15)
+    sliderValue.Size = UDim2.new(0， 30， 0, 15)
     sliderValue.Position = UDim2.new(0.5, -15, -1, -5)
     sliderValue.BackgroundTransparency = 1
     sliderValue.Text = "1.0"
-    sliderValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderValue.TextColor3 = Color3.fromRGB(255， 255, 255)
     sliderValue.TextSize = 10
     sliderValue.Parent = sliderKnob
     
@@ -580,7 +645,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     local dragging = false
     
     local function updateSlider(value)
-        current极 = value
+        currentValue = value
         sliderValue.Text = string.format("%.1f", currentValue)
         if onValueChange then
             onValueChange(currentValue)
@@ -588,7 +653,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     end
     
     sliderTrack.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.User极Type.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 或 input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             local trackAbsPos = sliderTrack.AbsolutePosition.X
             local trackAbsSize = sliderTrack.AbsoluteSize.X
@@ -599,20 +664,20 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
         end
     end)
     
-    private.UserInputService.InputEnded:Connect(function(input)
+    Private.UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
     
-    private.UserInputService.InputChanged:Connect(function(input)
+    Private.UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local trackAbsPos = sliderTrack.AbsolutePosition.X
-            local trackAbsSize = sliderTrack.Absolute极.X
+            local trackAbsSize = sliderTrack.AbsoluteSize.X
             local mouseX = input.Position.X
             
-            local relativePos = math.clamp((mouseX - trackAbsPos) / trackAbsSize, 0, 1)
-            sliderKnob.Position = UDim2.new(relativePos, 极, 0.5, -3)
+            local relativePos = math.clamp((mouseX - trackAbsPos) / trackAbsSize, 0， 1)
+            sliderKnob.Position = UDim2.new(relativePos, 0， 0.5, -3)
             
             updateSlider(minValue + (maxValue - minValue) * relativePos)
         end
@@ -621,7 +686,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     -- 自动跳跃开关（经典开关样式）
     local switchLabel = Instance.new("TextLabel")
     switchLabel.Size = UDim2.new(1, 0, 0, 20)
-    switchLabel.Position = UDim2.new(0, 0, 0, 40)
+    switchLabel.Position = UDim2.new(0， 0, 0, 40)
     switchLabel.BackgroundTransparency = 1
     switchLabel.Text = "自动跳跃"
     switchLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -631,12 +696,12 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     
     local switchFrame = Instance.new("Frame")
     switchFrame.Size = UDim2.new(0, 40, 0, 20)
-    switchFrame.Position = UDim2.new(1, -50, 0, 极)
+    switchFrame.Position = UDim2.new(1, -50, 0, 40)
     switchFrame.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     switchFrame.BorderSizePixel = 0
     local switchCorner = Instance.new("UICorner")
     switchCorner.CornerRadius = UDim.new(0, 10)
-    switchCorner.Parent极 switchFrame
+    switchCorner.Parent = switchFrame
     switchFrame.Parent = contentFrame
     
     local switchKnob = Instance.new("Frame")
@@ -654,7 +719,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             autoJumpEnabled = not autoJumpEnabled
             local targetPos = autoJumpEnabled and UDim2.new(0.5, 0, 0, 0) or UDim2.new(0, 0, 0, 0)
-            local tween = private.TweenService:Create(switchKnob, TweenInfo.new(0.2), {Position = targetPos})
+            local tween = Private.TweenService:Create(switchKnob, TweenInfo.new(0.2), {Position = targetPos})
             tween:Play()
             switchFrame.BackgroundColor3 = autoJumpEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
             if onValueChange then
@@ -676,7 +741,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
             dragStart = input.Position
             startPos = detailFrame.Position
             
-            input.Changed:极(function()
+            input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragInput = nil
                 end
@@ -690,7 +755,7 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
         end
     end)
     
-    private.UserInputService.InputChanged:Connect(function(input)
+    Private.UserInputService.InputChanged:Connect(function(input)
         if input == dragInput then
             updateInput(input)
         end
@@ -708,276 +773,157 @@ function MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
     detailFrame.BackgroundTransparency = 1
     header.TextTransparency = 1
     
-    local fadeIn = private.TweenService:Create(
+    local fadeIn = Private.TweenService:Create(
         detailFrame,
         TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         {BackgroundTransparency = 0.1}
     )
     
-    local text极 = private.TweenService:Create(
+    local textFadeIn = Private.TweenService:Create(
         header,
-        Tween极.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         {TextTransparency = 0}
     )
     
     fadeIn:Play()
     textFadeIn:Play()
     
-    -- 存储窗口引用
-    private.detailWindows[title] = detailFrame
-    private.detailStates[title] = true
+    detailFrame.Visible = true
+    Private.DetailStates[title] = true
     
     return detailFrame
 end
 
--- 关闭细节窗口
-function MCTechGUILib.closeDetailWindow(title)
-    if private.detailWindows[title] then
-        local detailFrame = private.detailWindows[title]
-        private.detailStates[title] = false
+--[[
+    创建浮动菜单
+    @param title string - 菜单标题
+    @param options table - 菜单选项
+    @param isSubMenu boolean - 是否为子菜单
+    @param parentMenuButton TextButton - 父菜单按钮
+    @return Frame - 菜单框架
+]]
+function MCTechGUILib.CreateFloatingMenu(title, options, isSubMenu, parentMenuButton)
+    -- 如果是子菜单且已存在，则切换显示状态
+    if isSubMenu and Private.SubMenus[title] then
+        local menu = Private.SubMenus[title]
+        local isCurrentlyVisible = menu.Visible
         
-        -- 淡出动画
-        local fadeOut = private.TweenService:Create(
-            detailFrame,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {BackgroundTransparency = 1}
-        )
-        
-        local textFadeOut = private.TweenService:Create(
-            detailFrame.Header,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextTransparency = 1}
-        )
-        
-        fadeOut:Play()
-        textFadeOut:Play()
-        
-        fadeOut.Completed:Connect(function()
-            detailFrame:Destroy()
-            private.detailWindows[title] = nil
-        end)
-    end
-end
-
--- 切换细节窗口
-function MCTechGUILib.toggleDetailWindow(title, parentButton, onValueChange)
-    if private.detailStates[title] then
-        MCTechGUILib.closeDetailWindow(title)
-    else
-        -- 关闭其他所有细节窗口
-        for otherTitle, _ in pairs(private.detailWindows) do
-            if otherTitle ~= title then
-                MCTechGUILib.closeDetailWindow(otherTitle)
-            end
+        -- 添加浮现动画
+        if not isCurrentlyVisible then
+            menu.Visible = true
+            menu.BackgroundTransparency = 1
+            menu.Header.TextTransparency = 1
+            
+            -- 浮现动画
+            local fadeIn = Private.TweenService:Create(
+                menu,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {BackgroundTransparency = 0.1}
+            )
+            
+            local textFadeIn = Private.TweenService:Create(
+                menu.Header,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {TextTransparency = 0}
+            )
+            
+            fadeIn:Play()
+            textFadeIn:Play()
+        else
+            -- 淡出动画
+            local fadeOut = Private.TweenService:Create(
+                menu,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {BackgroundTransparency = 1}
+            )
+            
+            local textFadeOut = Private.TweenService:Create(
+                menu.Header,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {TextTransparency = 1}
+            )
+            
+            fadeOut:Play()
+            textFadeOut:Play()
+            
+            fadeOut.Completed:Connect(function()
+                menu.Visible = false
+            end)
         end
         
-        -- 创建新窗口
-        MCTechGUILib.createDetailWindow(title, parentButton, onValueChange)
+        Private.SubMenuStates[title] = not isCurrentlyVisible
+        return menu
     end
-end
-
--- 创建子菜单
-function MCTechGUILib.createSubMenu(title, parentButton)
-    -- 创建子菜单容器
-    local subMenu = Instance.new("Frame")
-    subMenu.Name = title .. "SubMenu"
-    subMenu.Size = UDim2.new(0, 180, 0, 0) -- 高度初始为0
-    subMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-   极.BackgroundTransparency = 0.1
-    subMenu.BorderSizePixel = 0
-    subMenu.ClipsDescendants = true
-    subMenu.ZIndex = 5 -- 高于主菜单层级
-    subMenu.Parent = private.screenGui
+    
+    -- 创建菜单容器
+    local menuFrame = Instance.new("Frame")
+    menuFrame.Name = title .. "Menu"
+    menuFrame.Size = UDim2.new(0, 200, 0, 40 + (#options * 40))
+    menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    menuFrame.BackgroundTransparency = 0.1
+    menuFrame.BorderSizePixel = 0
+    menuFrame.ClipsDescendants = true
+    menuFrame.ZIndex = isSubMenu and 5 or 3
+    menuFrame.Visible = true
+    menuFrame.Parent = Private.ScreenGui
     
     -- 添加圆角
-    local subMenuCorner = Instance.new("UICorner")
-    subMenuCorner.CornerRadius = UDim.new(0, 6)
-    subMenuCorner.Parent = subMenu
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = menuFrame
     
     -- 添加粉蓝渐变背景
-    MCTechGUILib.createPinkBlueGradientEffect(subMenu)
+    MCTechGUILib.CreatePinkBlueGradientEffect(menuFrame)
     
     -- 添加粉蓝渐变边框
-    local subMenuStroke = Instance.new("UIStroke")
-    subMenuStroke.Thickness = 2
-    subMenuStroke.Transparency = 0.3
-    subMenuStroke.Parent = subMenu
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2
+    stroke.Transparency = 0.3
+    stroke.Parent = menuFrame
     
     -- 启动粉蓝渐变边框效果
-    MCTechGUILib.createPinkBlueStrokeEffect(subMenu极)
-    
-    -- 添加自动布局
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.FillDirection = Enum.FillDirection.Vertical
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = subMenu
-    
-    -- 设置位置在父按钮下方
-    local parentButtonPos = parentButton.AbsolutePosition
-    local parentButtonSize = parentButton.AbsoluteSize
-    subMenu.Position = UDim2.new(
-        0, parentButtonPos.X,
-        0, parentButtonPos.Y + parentButtonSize.Y + 5
-    )
-    
-    -- 存储子菜单引用
-    private.subMenus[title] = subMenu
-    private.subMenuStates[title] = false
-    
-    return subMenu
-end
-
--- 打开子菜单
-function MCTechGUILib.openSubMenu(title)
-    if private.subMen极[title] then
-        local subMenu = private.subMenus[title]
-        private.subMenuStates[title] = true
-        
-        -- 计算子菜单高度
-        local itemCount = #subMenu:GetChildren() - 1 -- 减去UIListLayout
-        local targetHeight = math.max(30, itemCount * 35 + 10) -- 每个按钮35像素高度 + 10像素内边距
-        
-        -- 展开动画
-        local expandTween = private.TweenService:Create(
-            subMenu,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {Size = UDim2.new(0, 180, 0, targetHeight)}
-        )
-        
-        expandTween:Play()
-        
-        -- 淡入动画
-        subMenu.BackgroundTransparency = 1
-        local fadeIn = private.TweenService:Create(
-            subMenu,
-            TweenInfo.new(0.3, Enum.Easing极.Quad, Enum.EasingDirection.Out),
-            {BackgroundTransparency = 0.1}
-        )
-        
-        fadeIn:Play()
-    end
-end
-
--- 关闭子菜单
-function MCTechGUILib.closeSubMenu(title)
-    if private.subMenus[title] then
-        local subMenu = private.subMenus[title]
-        private.subMenuStates[title] = false
-        
-        -- 收缩动画
-        local collapseTween = private.TweenService:Create(
-            subMenu,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {Size = UDim2.new(0, 180, 0, 0)}
-        )
-        
-        collapseTween:Play()
-        
-        -- 淡出动画
-        local fadeOut = private.TweenService:Create(
-            subMenu,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {BackgroundTransparency = 1}
-        )
-        
-        fadeOut:Play()
-    end
-end
-
--- 切换子菜单
-function MCTechGUIL极.toggleSubMenu(title, parentButton)
-    if private.subMenuStates[title] then
-        MCTechGUILib.closeSubMenu(title)
-    else
-        -- 关闭其他所有子菜单
-        for otherTitle, _ in pairs(private.subMenus) do
-            if otherTitle ~= title then
-                MCTechGUILib.closeSubMenu(otherTitle)
-            end
-        end
-        
-        -- 打开当前子菜单
-        MCTechGUILib.openSubMenu(title)
-    end
-end
-
--- 创建主菜单
-function MCTechGUILib.createMainMenu(menuItems)
-    -- 创建主菜单容器
-    local mainMenu = Instance.new("Frame")
-    mainMenu.Name = "MainMenu"
-    mainMenu.Size = UDim2.new(0, 180, 0, 40) -- 初始高度为40像素
-    mainMenu.Position = UDim2.new(0, 20, 0, 20)
-    mainMenu.BackgroundColor3 = Color3.fromRGB(30, 极, 40)
-    mainMenu.BackgroundTransparency = 0.1
-    mainMenu.BorderSizePixel = 0
-    mainMenu.ClipsDescendants = true
-    mainMenu.Z极 = 3
-    mainMenu.Parent = private.screenGui
-    
-    -- 添加圆角
-    local mainMenuCorner = Instance.new("UICorner")
-    mainMenuCorner.CornerRadius = UDim.new(0, 6)
-    mainMenuCorner.Parent = mainMenu
-    
-    -- 添加粉蓝渐变背景
-    MCTechGUILib.createPinkBlueGradientEffect(mainMenu)
-    
-    -- 添加粉蓝渐变边框
-    local mainMenuStroke = Instance.new("UIStroke")
-    mainMenuStroke.Thickness = 2
-    mainMenuStroke.Transparency = 0.3
-    mainMenuStroke.Parent = mainMenu
-    
-    -- 启动粉蓝渐变边框效果
-    MCTechGUILib.createPinkBlueStrokeEffect(mainMenuStroke)
+    MCTechGUILib.CreatePinkBlueStrokeEffect(stroke)
     
     -- 标题栏（可拖动区域）
     local header = Instance.new("TextButton")
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 40)
+    header.Size = UDim2.new(1, 0, 0, 30)
     header.Position = UDim2.new(0, 0, 0, 0)
     header.BackgroundTransparency = 1
     header.BorderSizePixel = 0
-    header.Text = "MC科技风格4.0"
-    header.TextColor3 = Color3.from极(255, 255, 255)
+    header.Text = title
+    header.TextColor3 = Color3.fromRGB(255, 255, 255)
     header.TextSize = 16
     header.Font = Enum.Font.GothamBold
     header.TextStrokeTransparency = 0.7
     header.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    header.Parent = mainMenu
+    header.ZIndex = menuFrame.ZIndex + 1
+    header.Parent = menuFrame
     
     -- 内容容器
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "Content"
-    contentFrame.Size = UDim2.new(1, 0, 0, 0)
-    contentFrame.Position = UDim2.new(0, 0, 0, 40)
+    contentFrame.Size = UDim2.new(1, 0, 1, -30)
+    contentFrame.Position = UDim2.new(0, 0, 0, 30)
     contentFrame.BackgroundTransparency = 1
     contentFrame.BorderSizePixel = 0
-    contentFrame.Visible = false
-    contentFrame.Parent = main极
+    contentFrame.ZIndex = menuFrame.ZIndex + 1
+    contentFrame.Parent = menuFrame
     
-    -- 添加自动布局
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.FillDirection = Enum.FillDirection.Vertical
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = contentFrame
-    
-    -- 菜单项按钮
-    for i, item in ipairs(menuItems) do
+    -- 添加选项按钮
+    for i, option in ipairs(options) do
         local button = Instance.new("TextButton")
-        button.Name = item.Name
-        button.Size = UDim2.new(1, -10, 0, 35)
-        button.Position = UDim2.new(0, 5, 0, (i - 1) * 40)
-        button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        button.Name = option.Name
+        button.Size = UDim2.new(1, -10, 0, 30)
+        button.Position = UDim2.new(0, 5, 0, (i - 1) * 40 + 5)
+        button.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
         button.BackgroundTransparency = 0.5
         button.BorderSizePixel = 0
-        button.Text = item.Name
+        button.Text = option.Name
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.TextSize = 极
+        button.TextSize = 14
         button.Font = Enum.Font.Gotham
+        button.ZIndex = menuFrame.ZIndex + 2
         button.Parent = contentFrame
         
         -- 添加圆角
@@ -986,77 +932,24 @@ function MCTechGUILib.createMainMenu(menuItems)
         buttonCorner.Parent = button
         
         -- 添加悬停效果
-        local originalSize = button.Size
-        local hoverSize = UDim2.new(1, -5, 0, 35)
-        
         button.MouseEnter:Connect(function()
-            local tween = private.TweenService:Create(button, TweenInfo.new(0.2), {Size = hoverSize})
-            tween:Play()
+            button.BackgroundTransparency = 0.3
         end)
         
         button.MouseLeave:Connect(function()
-            local tween = private.TweenService:Create(button, TweenInfo.new(0.2), {Size = originalSize})
-            tween:Play()
+            button.BackgroundTransparency = 0.5
         end)
         
         -- 点击事件
         button.MouseButton1Click:Connect(function()
-            if item.OnClick then
-                item.OnClick(button)
+            if option.Callback then
+                option.Callback()
             end
             
-            if item.SubMenu then
-                -- 如果有子菜单，创建或切换子菜单
-                if not private.subMenus[item.Name] then
-                    local subMenu = MCTechGUILib.createSubMenu(item.Name, button)
-                    for _, subItem in ipairs(item.SubMenu) do
-                        local subButton = Instance.new("TextButton")
-                        subButton.Name = subItem.Name
-                        subButton.Size = UDim2.new(1, -10, 0, 30)
-                        subButton.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-                        subButton.BackgroundTransparency = 0.3
-                        subButton.BorderSizePixel = 0
-                        subButton.Text = subItem.Name
-                        subButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        subButton.TextSize = 12
-                        subButton.Font = Enum.Font.Gotham
-                        subButton.LayoutOrder = #subMenu:GetChildren()
-                        subButton.Parent = subMenu
-                        
-                        -- 添加圆角
-                        local subButtonCorner = Instance.new("UICorner")
-                        subButtonCorner.CornerRadius = UDim.new(0, 4)
-                        subButtonCorner.Parent = subButton
-                        
-                        -- 悬停效果
-                        local subOriginalSize = subButton.Size
-                        local subHover极 = UDim2.new(1, -5, 0, 30)
-                        
-                        subButton.MouseEnter:Connect(function()
-                            local tween = private.TweenService:Create(subButton, TweenInfo.new(0.2), {Size = subHoverSize})
-                            tween:Play()
-                        end)
-                        
-                        subButton.MouseLeave:Connect(function()
-                            local tween = private.TweenService:Create(subButton, TweenInfo.new(0.2), {Size = subOriginalSize})
-                            tween:Play()
-                        end)
-                        
-                        -- 子菜单点击事件
-                        subButton.MouseButton1Click:Connect(function()
-                            if subItem.OnClick then
-                                subItem.OnClick(subButton)
-                            end
-                        end)
-                    end
-                end
-                
-                MCTechGUILib.toggleSubMenu(item.Name, button)
-            end
-            
-            if item.DetailWindow then
-                -- 如果有细节窗口，创建或切换细节窗口
-                MCTechGUILib.toggleDetailWindow(item.Name, button, item.OnValueChange)
+            -- 显示通知
+            if option.Name ~= "设置" and option.Name ~= "显示功能状态" then
+                MCTechGUILib.ShowNotification(title, option.Name .. " 已激活", true)
+                MCTechGUILib.UpdateFeatureStatus(option.Name, true)
             end
         end)
     end
@@ -1065,56 +958,20 @@ function MCTechGUILib.createMainMenu(menuItems)
     local dragInput, dragStart, startPos
     
     local function updateInput(input)
-        local delta = input.Position - drag极
-        mainMenu.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-   极
+        local delta = input.Position - dragStart
+        menuFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
     
     header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragStart = input.Position
-            startPos = mainMenu.Position
+            startPos = menuFrame.Position
             
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragInput = nil
                 end
             end)
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-            -- 右键点击切换菜单展开/收缩
-            if contentFrame.Visible then
-                -- 收缩菜单
-                local collapseTween = private.TweenService:Create(
-                    mainMenu,
-                    TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {Size = UDim2.new(0, 180, 0, 40)}
-                )
-                
-                collapseTween:Play()
-                contentFrame.Visible = false
-                
-                -- 关闭所有子菜单
-                for title, _ in pairs(private.subMenus) do
-                    MCTechGUILib.closeSubMenu(title)
-                end
-                
-                -- 关闭所有细节窗口
-                for title, _ in pairs(private.detailWindows) do
-                    MCTechGUILib.closeDetailWindow(title)
-                end
-            else
-                -- 展开菜单
-                local itemCount = #menuItems
-                local targetHeight = 40 + (itemCount * 40) + 5 -- 标题高度 + 按钮总高度 + 内边距
-                
-                local expandTween = private.TweenService:Create(
-                    mainMenu,
-                    TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                   极 Size = UDim2.new(0, 180, 0, targetHeight)}
-                )
-                
-                expandTween:Play()
-                contentFrame.Visible = true
-            end
         end
     end)
     
@@ -1124,53 +981,177 @@ function MCTechGUILib.createMainMenu(menuItems)
         end
     end)
     
-    private.UserInputService.InputChanged:Connect(function(input)
+    Private.UserInputService.InputChanged:Connect(function(input)
         if input == dragInput then
             updateInput(input)
         end
     end)
     
-    -- 创建功能状态显示容器
-    MCTechGUILib.createFeatureStatusContainer()
+    -- 设置位置
+    if isSubMenu and parentMenuButton then
+        -- 子菜单位置在父按钮旁边
+        local parentButtonPos = parentMenuButton.AbsolutePosition
+        local parentButtonSize = parentMenuButton.AbsoluteSize
+        menuFrame.Position = UDim2.new(
+            0, parentButtonPos.X + parentButtonSize.X + 5,
+            0, parentButtonPos.Y
+        )
+    else
+        -- 主菜单位置在屏幕中央
+        local screenSize = workspace.CurrentCamera.ViewportSize
+        menuFrame.Position = UDim2.new(
+            0.5, -100,
+            0.5, -menuFrame.Size.Y.Offset / 2
+        )
+    end
     
-    return mainMenu
+    -- 初始透明度为1，准备浮现动画
+    menuFrame.BackgroundTransparency = 1
+    header.TextTransparency = 1
+    
+    local fadeIn = Private.TweenService:Create(
+        menuFrame,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {BackgroundTransparency = 0.1}
+    )
+    
+    local textFadeIn = Private.TweenService:Create(
+        header,
+        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {TextTransparency = 0}
+    )
+    
+    fadeIn:Play()
+    textFadeIn:Play()
+    
+    -- 存储菜单引用
+    if isSubMenu then
+        Private.SubMenus[title] = menuFrame
+        Private.SubMenuStates[title] = true
+    end
+    
+    return menuFrame
 end
 
--- 重置UI：关闭所有活跃功能然后销毁UI面板
-function MCTechGUILib.resetUI()
-    -- 关闭所有活跃功能
-    for featureName, _ in pairs(private.activeFeatures) do
-        -- 这里应该调用每个功能的关闭函数
-        -- 实际实现会根据具体功能而定
-        MCTechGUILib.updateFeatureStatus(featureName, false)
+--[[
+    重置UI（关闭所有已打开的功能并销毁UI面板）
+]]
+function MCTechGUILib.ResetUI()
+    -- 关闭所有已打开的功能
+    for featureName, _ in pairs(Private.ActiveFeatures) do
+        MCTechGUILib.UpdateFeatureStatus(featureName, false)
     end
     
     -- 清空活跃功能表
-    private.activeFeatures = {}
+    Private.ActiveFeatures = {}
     
-    -- 关闭所有细节窗口
-    for title, _ in pairs(private.detailWindows) do
-        MCTechGUILib.closeDetailWindow(title)
+    -- 销毁所有子菜单
+    for _, menu in pairs(Private.SubMenus) do
+        if menu and menu.Parent then
+            menu:Destroy()
+        end
+    end
+    Private.SubMenus = {}
+    Private.SubMenuStates = {}
+    
+    -- 销毁所有细节窗口
+    for _, window in pairs(Private.DetailWindows) do
+        if window and window.Parent then
+            window:Destroy()
+        end
+    end
+    Private.DetailWindows = {}
+    Private.DetailStates = {}
+    
+    -- 销毁功能状态容器
+    if Private.FeatureStatusContainer and Private.FeatureStatusContainer.Parent then
+        Private.FeatureStatusContainer:Destroy()
+        Private.FeatureStatusContainer = nil
     end
     
-    -- 关闭所有子菜单
-极 for title, _ in pairs(private.subMenus) do
-        MCTechGUILib.closeSubMenu(title)
+    -- 销毁主UI
+    if Private.ScreenGui and Private.ScreenGui.Parent then
+        Private.ScreenGui:Destroy()
+        Private.ScreenGui = nil
     end
     
-    -- 销毁UI面板
-    if private.screenGui then
-        private.screenGui:Destroy()
-        private.screenGui = nil
-    end
+    -- 重新初始化
+    MCTechGUILib.Init()
     
-    -- 重置所有状态
-    private.subMenus = {}
-    private.subMenuStates = {}
-    private.detailWindows = {}
-    private.detailStates = {}
-    private.activeNotifications = {}
-    private.featureStatusContainer = nil
+    -- 重新创建功能状态容器
+    MCTechGUILib.CreateFeatureStatusContainer()
 end
+
+--[[
+    创建主菜单
+    @return Frame - 主菜单框架
+]]
+function MCTechGUILib.CreateMainMenu()
+    local mainMenuOptions = {
+        {
+            Name = "飞行",
+            Callback = function()
+                -- 飞行功能实现
+                MCTechGUILib.ShowNotification("飞行", "飞行功能已激活", true)
+                MCTechGUILib.UpdateFeatureStatus("飞行", true)
+            end
+        },
+        {
+            Name = "穿墙",
+            Callback = function()
+                -- 穿墙功能实现
+                MCTechGUILib.ShowNotification("穿墙", "穿墙功能已激活", true)
+                MCTechGUILib.UpdateFeatureStatus("穿墙", true)
+            end
+        },
+        {
+            Name = "速度",
+            Callback = function()
+                -- 速度功能实现
+                MCTechGUILib.ShowNotification("速度", "速度功能已激活", true)
+                MCTechGUILib.UpdateFeatureStatus("速度", true)
+            end
+        },
+        {
+            Name = "夜视",
+            Callback = function()
+                -- 夜视功能实现
+                MCTechGUILib.ShowNotification("夜视", "夜视功能已激活", true)
+                MCTechGUILib.UpdateFeatureStatus("夜视", true)
+            end
+        },
+        {
+            Name = "设置",
+            Callback = function()
+                -- 设置子菜单
+                local settingsMenu = MCTechGUILib.CreateFloatingMenu("设置", {
+                    {
+                        Name = "显示功能状态",
+                        Callback = function()
+                            Private.ShowFeatureStatus = not Private.ShowFeatureStatus
+                            MCTechGUILib.ToggleFeatureStatusDisplay(Private.ShowFeatureStatus)
+                            MCTechGUILib.ShowNotification("设置", "功能状态显示: " .. (Private.ShowFeatureStatus and "开启" or "关闭"), Private.ShowFeatureStatus)
+                        end
+                    },
+                    {
+                        Name = "重置UI",
+                        Callback = function()
+                            MCTechGUILib.ResetUI()
+                            MCTechGUILib.ShowNotification("设置", "UI已重置", true)
+                        end
+                    }
+                }, true)
+            end
+        }
+    }
+    
+    -- 创建功能状态容器
+    MCTechGUILib.CreateFeatureStatusContainer()
+    
+    return MCTechGUILib.CreateFloatingMenu("MC科技菜单", mainMenuOptions, false)
+end
+
+-- 自动初始化
+MCTechGUILib.Init()
 
 return MCTechGUILib
