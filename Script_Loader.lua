@@ -16,7 +16,7 @@ local GAME_CONFIG = {
         name = "挖掘它｜(Dig it)",
         scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/Dig_it.lua"
     },
-    [98629859043211] = {
+    [99078474560152] = {
         name = "M.E.G.无尽现实｜(M.E.G. Endless Reality)", 
         scriptUrl = "https://raw.githubusercontent.com/InLTree/LinRobloxScript/refs/heads/main/M.E.G._Endless_Reality.lua"
     }
