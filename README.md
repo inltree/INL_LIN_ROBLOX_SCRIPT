@@ -33,10 +33,12 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InLTree/LinRobloxScri
 > 并未恢复更新，只是更改脚本命名 - 2025/05/06
 > 
 > 更改脚本命名！- 2025-06-14
+>
+> 已恢复更新，修复错误！- 2025-09-13
 
 - 使用方法：执行即用，配合飞行更佳
 
-- 注意事项：由于脚本暂停更新部分可能失效
+- 注意事项：无
 
 ### Grow a Garden｜Script
 
