@@ -1,5 +1,5 @@
 -- inltree_Lin_UniversalUILib.lua - inltree｜Lin×DeepSeek 通用UI库
--- 版本: 1.0.0
+-- 版本: 1.1.0
 -- 提供简洁实用的Roblox UI组件
 
 local inltree_Lin_UniversalUILib = {}
