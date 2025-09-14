@@ -352,7 +352,7 @@ Tab_Hierarchy:CreateToggle({
 Tab_Hierarchy:CreateSection("层级传送")
 
 local Targets = {
-    ["!-ExitTeleport"] = "ExitTeleport"
+    ["!-ExitTeleport"] = "ExitTeleport",
     ["零食-BoothTables"] = "BoothTables",
     ["零食-Booths"] = "Booths", 
     ["矩阵-TV"] = "tv",
