@@ -230,6 +230,7 @@ local function GetEntityDisplayName(model)
         ["AraneaMembri"] = "蜘蛛腿",
         ["Clump"] = "肢团",
         ["Duller"] = "钝人",
+        ["Facelings"] = "面灵",
         ["Hound"] = "猎犬",
         ["Howler"] = "嚎叫",
         ["MemoryWorm"] = "记忆蠕虫",
@@ -242,9 +243,11 @@ local function GetEntityDisplayName(model)
         ["RunSmilers"] = "奔跑笑魇",
         ["Strangler"] = "绞杀者",
         ["ThePhone"] = "电话实体",
+        ["Transporter"] = "传送者",
         ["Twin"] = "双胞胎",
         ["TheVirus"] = "病毒",
         ["Window"] = "窗户",
+        ["CheaterMedkit"] = "作弊医疗箱[物品]",
     }
     
     return nameMappings[model.Name] or model.Name
@@ -258,6 +261,7 @@ local function GetItemDisplayName(model)
         ["Item"] = "目标",
         ["Item2"] = "目标2",
         ["ItemL"] = "目标L",
+        ["ItemF"] = "目标F",
     }
     
     return nameMappings[model.Name] or model.Name
@@ -357,7 +361,7 @@ local Targets = {
     ["零食-Booths"] = "Booths", 
     ["矩阵-TV"] = "tv",
     ["矩阵-KeyGrabber"] = "KeyGrabber",
-    ["记忆-DinosaurPlush"] = "DinosaurPlush"
+    ["记忆-DinosaurPlush"] = "DinosaurPlush",
 }
 
 for name, targetName in pairs(Targets) do
