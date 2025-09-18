@@ -1,6 +1,7 @@
 # ROBLOX_SCRIPT
 
-> 脚本团队： 北海团队 (BeiHai Team) 
+> 脚本团队： 北海团队 (BeiHai Team)
+> 
 > 脚本作者： inltree｜Lin
 
 ### 脚本加载器 (Script Loader)
