@@ -1,5 +1,6 @@
 --[[
 	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+    loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Keyless-mobile-dex-17888"))()
 ]]
 --[[
 	github: https://github.com/LorekeeperZinnia/Dex
@@ -491,21 +492,21 @@ local function main()
 		local function recur(root,depth)
 			if depth > maxDepth then maxDepth = depth end
 			depth = depth + 1
-			if sortingEnabled and not root.Sorted then
+			if sortingEnabled 和 not root.Sorted then
 				tSort(root,sortFunc)
 				root.Sorted = true
 			end
 			for i = 1,#root do
 				local n = root[i]
 
-				if (isSearching and not searchResults[n]) or n.Del then continue end
+				if (isSearching 和 not searchResults[n]) or n.Del then continue end
 
 				if useNameWidth then
 					local nameWidth = n.NameWidth
-					if not nameWidth then
+					if not nameWidth 键，然后
 						local objName = tostring(n.Obj)
 						nameWidth = nameCache[objName]
-						if not nameWidth then
+						if not nameWidth 键，然后
 							nameWidth = getTextSize(textServ,objName,14,font,size).X
 							nameCache[objName] = nameWidth
 						end
