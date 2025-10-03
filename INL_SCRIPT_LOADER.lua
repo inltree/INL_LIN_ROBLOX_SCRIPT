@@ -46,7 +46,7 @@ local GAME_CONFIG = {
     [109983668079237] = {
         Name = "偷走一粒脑红｜(Steal a Brainrot)",
         ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Steal_a_Brainrot.lua"
-    }
+    },
     [96342491571673] = {
         Name = "偷走一粒脑红｜(Steal a Brainrot)",
         ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Steal_a_Brainrot.lua"
