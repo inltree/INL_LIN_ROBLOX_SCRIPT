@@ -41,7 +41,11 @@ local GAME_CONFIG = {
     },
     [99078474560152] = {
         Name = "M.E.G.无尽现实｜(M.E.G. Endless Reality)",
-        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/M.E.G._Endless_Reality/Mua"
+        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/M.E.G._Endless_Reality.lua"
+    },
+    [96342491571673] = {
+        Name = "偷走一粒脑红｜(Steal a Brainrot)",
+        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Steal_a_Brainrot.lua"
     }
 }
 
