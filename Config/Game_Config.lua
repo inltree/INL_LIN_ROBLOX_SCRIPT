@@ -1,4 +1,4 @@
-return {
+local Config = {
     [4483381587] = {
         Name = "一个字面上的底板。｜(a literal baseplate.)",
         ScriptUrl = ""
@@ -24,3 +24,5 @@ return {
         ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Steal_a_Brainrot.lua"
     }
 }
+
+return Config
