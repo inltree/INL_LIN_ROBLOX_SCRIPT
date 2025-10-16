@@ -2,6 +2,8 @@ local Games = loadstring(game:HttpGet("https://raw.githubusercontent.com/inltree
 
 local URL = Games[game.PlaceId]
 
-if URL then
+if URL and URL ~= "" then
   loadstring(game:HttpGet(URL))()
+else
+  warn("No script configured for this game.")
 end
