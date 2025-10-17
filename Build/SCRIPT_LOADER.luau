@@ -1,49 +1,22 @@
+local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui = game:GetService("StarterGui")
+local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+local gameName = ok and info.Name or "Unknown Game"
+pcall(function() StarterGui:SetCore("SendNotification", {Title = gameName, Text = "inltree｜"..gameName.." Script Loading...｜加载中...", Duration = 3}) end)
+
 local DEFAULT_SCRIPT_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Script_Tools/Player_Info.lua"
-local success, Games = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Config/Game_Config.lua"))()
-end)
+local CONFIG_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Config/Game_Config.lua"
 
-if not success then
-    warn("Failed to load game config:", Games)
-    local ok, err = pcall(function()
-        loadstring(game:HttpGet(DEFAULT_SCRIPT_URL))()
-    end)
-    if not ok then
-        warn("Failed to load default script:", err)
-    end
-    return
-end
+local function loadScript(url) return pcall(function() loadstring(game:HttpGet(url))() end) end
 
-local GameConfig = Games[game.PlaceId]
+local configSuccess, gameConfigs = pcall(function() return loadstring(game:HttpGet(CONFIG_URL))() end)
+if not configSuccess then loadScript(DEFAULT_SCRIPT_URL) return end
 
-if GameConfig and GameConfig.ScriptUrl and GameConfig.ScriptUrl ~= "" then
-    local scriptSuccess, err = pcall(function()
-        loadstring(game:HttpGet(GameConfig.ScriptUrl))()
-    end)
-    if scriptSuccess then
-        print("Successfully executed script for:", GameConfig.Name)
-    else
-        warn("Failed to load game script:", err)
-        local ok, defaultErr = pcall(function()
-            loadstring(game:HttpGet(DEFAULT_SCRIPT_URL))()
-        end)
-        if ok then
-            print("Fallback to default script.")
-        else
-            warn("Failed to load default script:", defaultErr)
-        end
-    end
+local gameConfig = gameConfigs[game.PlaceId]
+if gameConfig and gameConfig.ScriptUrl and gameConfig.ScriptUrl ~= "" then
+    if loadScript(gameConfig.ScriptUrl) then print("Loaded: "..gameConfig.Name.." Game PlaceId: "..game.PlaceId) else loadScript(DEFAULT_SCRIPT_URL) end
 else
-    warn("No script configured for this game. Supported games:")
-    for _, cfg in pairs(Games) do
-        print("-", cfg.Name)
-    end
-    local ok, defaultErr = pcall(function()
-        loadstring(game:HttpGet(DEFAULT_SCRIPT_URL))()
-    end)
-    if ok then
-        print("Fallback to default script.")
-    else
-        warn("Failed to load default script:", defaultErr)
-    end
+    warn("No script for this game. Supported:")
+    for _,cfg in pairs(gameConfigs) do if cfg.Name then print("- "..cfg.Name.." Game PlaceId: "..game.PlaceId) end end
+    loadScript(DEFAULT_SCRIPT_URL)
 end
