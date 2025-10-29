@@ -1,6 +1,6 @@
 --[[
-   不要按按钮四自动胜利 v1.1.12
-   Made by inltree | Lin & ChatGPT
+   不要按按钮四自动胜利 v1.1.14
+   Made by inltree | Lin & ChatGPT（）
 ]]
 local cfg = {
 	mainInterval = 0.5,   -- 地图监控间隔
@@ -8,7 +8,7 @@ local cfg = {
 	pathInterval = 0.1,   -- 固定路径扫描间隔
 	winInterval = 0.3,    -- 胜利触发间隔
 	dangerInterval = 0.1, -- 伤害删除间隔
-	winLimit = 3,         -- 每张地图胜利触发次数上限
+	winLimit = 5,         -- 每张地图胜利触发次数上限
 	debug = false          -- 调试模式
 }
 
@@ -17,35 +17,50 @@ local curMap = nil
 local winCount = 0
 local lastPathMap = nil
 
-local WIN = {"win","winpatr","winpar","winner","thewin","winwin","winpart","winbrick","winning","wpart","victory","finish","end","CastleChest","complete","teleportout","escaped"}
-local COIN = {"coin","pumpkin","money","cash","reward","point","score"}
-local DAG = {"cube","cactus","die","death","explode","kill","hurt","poison","lava","laser","lightorb","QuickSand","spike","trap","thorn"}
+local WIN = {"win","wpart","castlechest","teleportout","escaped","victory","finish","end"} -- ,"winpatr","winpar","winner","thewin","winwin","winpart","winbrick","winning","complete",
+local COIN = {"coin","pumpkin","reward"} -- ,"money","cash","point","score"
+local DAG = {"cactus","die","death","explode","kill","hurt","poison","lava","laser","lightorb","quicksand","spike","trap","thorn"}--"cube",
+
+--[[
+   workspace.Map33.SpinBrick
+]]
 
 -- 🧭 固定路径表
 local MAP_PATHS = {
     Map19 = {"Win"},
+    Map36 = {"TheWatee"},
+    Map78 = {"Winners"},
 	Map87 = {"Shapes"},
+	Map88 = {"hitboxes"}, -- 无法成功执行
 	Map92 = {"Rings"},
 	Map98 = {"Pads"},
-	Map110 = {"Blocks"},
+	Map110 = {"Blocks","B"},
 	Map113 = {"TheCandy"},
 	Map114 = {"Fireworks"},
 	Map115 = {"CurrentLeaks"},
 	Map116 = {"Spawns"},
-	Map149 = {"UsedPresent"}
+	Map134 = {"Active"},
+	Map141 = {"MeshPart"}, -- Picked
+	Map149 = {"UsedPresent"} -- 无法成功执行
 }
---[[]
-    Map91 = {"REWARD"} -- 抢劫银行
-workspace.Map91.TeleportOut -- 抢劫银行
-    Map142 = {"FadingPlatforms"} -- 有点缺德
+--[[
+    workspace.Map19.Win
+    Map91 = {"REWARD"}, -- 抢劫银行
+    Map91.TeleportOut -- 抢劫银行，不能循环触屏会无限传送
+    Map142 = {"FadingPlatforms"}, -- 坠落块，很缺德
+    workspace.Map78.Winners.WinPart.TouchInterest -- 不知道啥原因无法正确触屏
+    workspace.Map88.hitboxes -- 送披萨
+    Map116 = {"Spawns"}, -- 油漆桶，很缺德
+    workspace.Map141.Picked -- 不要进球/拦截滚动的球
+    workspace.Map36.TheWater -- 去水中
+    
 ]]
 
--- 美化打印函数
+-- 打印格式化
 local function inltreeLog(emoji, category, message)
 	print("[不要按按钮四] " .. emoji .. " [" .. category .. "] " .. message)
 end
 
--- 名称匹配函数
 local function has(str, tbl)
 	for _, v in ipairs(tbl) do
 		if string.find(string.lower(str), string.lower(v)) then
@@ -54,7 +69,6 @@ local function has(str, tbl)
 	end
 end
 
--- 查找当前地图
 local function findMap()
 	for _, v in ipairs(workspace:GetChildren()) do
 		if v:IsA("Model") and v.Name:match("^Map%d+$") then
@@ -63,7 +77,6 @@ local function findMap()
 	end
 end
 
--- 安全触碰
 local function touch(tt, hrp)
 	pcall(function()
 		firetouchinterest(tt.Parent, hrp, 0)
@@ -72,7 +85,6 @@ local function touch(tt, hrp)
 	end)
 end
 
--- 扫描对象下的触碰控件
 local function triggerUnder(obj, hrp)
 	for _, v in ipairs(obj:GetDescendants()) do
 		if v:IsA("TouchTransmitter") then
@@ -222,7 +234,7 @@ task.spawn(function()
 	end
 end)
 
--- 🎯 地图监控线程（主控）
+-- 🎯 地图监控线程
 task.spawn(function()
 	while true do
 		local map = findMap()
