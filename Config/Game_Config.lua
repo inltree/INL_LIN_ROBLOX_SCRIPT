@@ -22,6 +22,10 @@ local Config = {
     [96342491571673] = {
         Name = "偷走一粒脑红｜(Steal a Brainrot)",
         ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Steal_a_Brainrot.lua"
+    },
+    [5171093784] = {
+        Name = "不要按按钮四｜(Don't Press The Button 4)",
+        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Build/Don't_Press_The_Button_4.lua"
     }
 }
 
