@@ -190,7 +190,7 @@ disasterText.Parent = disasterFrame
 local function sendDisasterAlert(disasterName)
     print("🌪️ 当前灾害:", disasterName)
     local success = pcall(function()
-        game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(disasterName)
+        game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(disasterName.."!")
     end)
     
     if success then
