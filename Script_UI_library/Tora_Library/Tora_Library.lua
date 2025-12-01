@@ -7,6 +7,19 @@
 
 local library = {flags = {}, windows = {}, open = true}
 
+-- 字体配置
+library.fonts = {
+    titleset = Enum.Font.SourceSans,  -- 标题字体
+    contentset = Enum.Font.SourceSans, -- 内容字体
+    buttonset = Enum.Font.SourceSans   -- 按钮字体
+}
+
+--[[
+    library.fonts.titleset
+    library.fonts.contentset
+    library.fonts.buttonset
+]]
+
 -- 服务变量
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -96,7 +109,7 @@ local function createOptionHolder(holderTitle, parent, parentTable, subHolder)
         BorderSizePixel = 0,
         Text = holderTitle,
         TextSize = subHolder and 16 or 17,
-        Font = Enum.Font.LuckiestGuy,
+        Font = library.fonts.titleset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Parent = parentTable.main
     })
@@ -208,7 +221,7 @@ local function createLabel(option, parent)
         BackgroundTransparency = 1,
         Text = " " .. option.text,
         TextSize = 17,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = parent.content
@@ -228,7 +241,7 @@ function createToggle(option, parent)
         BackgroundTransparency = 1,
         Text = " " .. option.text,
         TextSize = 17,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = parent.content
@@ -336,7 +349,7 @@ function createButton(option, parent)
         BackgroundTransparency = 1,
         Text = " " .. option.text,
         TextSize = 17,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         Parent = parent.content
     })
@@ -411,7 +424,7 @@ local function createBind(option, parent)
         BackgroundTransparency = 1,
         Text = " " .. option.text,
         TextSize = 17,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = parent.content
@@ -544,7 +557,7 @@ local function createSlider(option, parent)
         BackgroundTransparency = 1,
         Text = " " .. option.text,
         TextSize = 17,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = main
@@ -724,7 +737,7 @@ local function createList(option, parent, holder)
         BackgroundTransparency = 1,
         Text = option.text,
         TextSize = 14,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(140, 140, 140),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = main
@@ -989,7 +1002,7 @@ local function createBox(option, parent)
         BackgroundTransparency = 1,
         Text = option.text,
         TextSize = 14,
-        Font = Enum.Font.GothamBlack,
+        Font = library.fonts.contentset,
         TextColor3 = Color3.fromRGB(100, 100, 100),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = main
@@ -1756,10 +1769,10 @@ function library:Init()
     elseif gethui then
         gethui(self.base)
     else
-        game:GetService"Players".LocalPlayer:Kick("Error: protect_gui function not found")
+        game:GetService("Players").LocalPlayer:Kick("Error: protect_gui function not found")
         return
     end
-    self.base.Parent = game:GetService"CoreGui"
+    self.base.Parent = game:GetService("CoreGui")
     self.base.ResetOnSpawn = true
     self.base.Name = "ToraScript"
     
