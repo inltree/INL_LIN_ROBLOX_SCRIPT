@@ -43,7 +43,7 @@ local DefaultConfig = {
     NotifDuration = 3,
     UIScale = 1.0,
     WindowWidth = 180,
-    WindowMaxHeight = 350, -- 用户设置的最大高度，但受屏幕高度限制
+    WindowHeight = 350, -- 用户设置的最大高度，但受屏幕高度限制
     ItemHeight = 32,
     Theme = "Default",
     UIVisible = true,
@@ -656,7 +656,8 @@ function Library:SetupSettings()
     Library:RefreshDimensions()
 end)
     UIConf:CreateSlider("窗口宽度", 100, 300, Library.Config.WindowWidth, function(v)
-        Library.Config.WindowWidth = v; Library:RefreshDimensions()
+        Library.Config.WindowWidth = v
+        Library:RefreshDimensions()
     end)
     
     local StyleConf = Sets:CreateModule("样式设置", function() end, false)
