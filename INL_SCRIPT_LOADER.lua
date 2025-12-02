@@ -1,53 +1,107 @@
-local MPS = game:GetService("MarketplaceService")
-local GUI = game:GetService("StarterGui")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui = game:GetService("StarterGui")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
 
-local ok, info = pcall(function() return MPS:GetProductInfo(game.PlaceId) end)
-local name = ok and info.Name or "Unknown Game"
+local function showNotification(type, title, message, level)
+    if type == "notify" then
+        pcall(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = title,
+                Text = message,
+                Duration = 3
+            })
+        end)
+        return true
+    elseif type == "print" then
+        local prefix = level and ("[inltree] " .. level .. " ") or "[inltree] "
+        print(prefix .. title .. (message and (" " .. message) or ""))
+        return true
+    elseif type == "warn" then
+        local prefix = level and ("[inltree] " .. level .. " ") or "[inltree] "
+        warn(prefix .. title .. (message and (" " .. message) or ""))
+        return true
+    end
+    return false
+end
 
-pcall(function()
-	GUI:SetCore("SendNotification", {Title = name, Text = "inltree｜"..name.." is loading...", Duration = 3})
+local isSuccess, gameInfo = pcall(function() 
+    return MarketplaceService:GetProductInfo(game.PlaceId) 
 end)
-print("[inltree] ▶️ Loading script for:", name, "(PlaceId:", game.PlaceId .. ")")
+local gameName = isSuccess and gameInfo.Name or "Unknown Game"
 
-local DEF_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Script_Tools/Player_Info.lua"
-local CFG_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Config/Game_Config.lua"
+showNotification("notify", gameName, "inltree｜"..gameName.." is loading...")
+showNotification("print", "▶️ Loading script for:", gameName, "(PlaceId: " .. game.PlaceId .. ")")
 
-local function loadURL(url)
-	local ok, res = pcall(function() return game:HttpGet(url) end)
-	if not ok or res == "" then return false end
-	local fn = loadstring(res)
-	return fn and select(1, pcall(fn))
+local DEFAULT_SCRIPT_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Script_Tools/Player_Info.lua"
+local CONFIG_URL = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Config/Game_Config.lua"
+
+local function loadScriptFromUrl(url)
+    local success, response = pcall(function() 
+        return game:HttpGet(url) 
+    end)
+    if not success or response == "" then 
+        return false 
+    end
+    local loadedFunction = loadstring(response)
+    return loadedFunction and select(1, pcall(loadedFunction))
 end
 
-local okCfg, cfg = pcall(function() return loadstring(game:HttpGet(CFG_URL))() end)
-if not okCfg or type(cfg) ~= "table" then
-	warn("[inltree] ❌ Failed to load config. Using default script.")
-	GUI:SetCore("SendNotification", {Title = "Config Load Failed", Text = "Using default script.", Duration = 4})
-	loadURL(DEF_URL)
-	return
+local configLoadedSuccessfully, gameConfig = pcall(function() 
+    return loadstring(game:HttpGet(CONFIG_URL))() 
+end)
+
+if not configLoadedSuccessfully or type(gameConfig) ~= "table" then
+    showNotification("warn", "❌ Failed to load config. Using default script.")
+    showNotification("notify", "Config Load Failed", "Using default script. ❌")
+    loadScriptFromUrl(DEFAULT_SCRIPT_URL)
+    return
 end
 
-local function printList()
-	print("\n[inltree] 📜 Supported Games:")
-	for id, c in pairs(cfg) do
-		if c.Name then print("   ● " .. c.Name .. " (PlaceId: " .. id .. ")") end
-	end
+local function displaySupportedGamesList()
+    showNotification("print", "📜 Supported Games:")
+    for placeId, config in pairs(gameConfig) do
+        if config.Name then 
+            print("● " .. config.Name .. " (PlaceId: " .. placeId .. ")")
+        end
+    end
 end
 
-local data = cfg[game.PlaceId]
-if data and data.ScriptUrl ~= "" then
-	if loadURL(data.ScriptUrl) then
-		print("[inltree] ✅ Script loaded successfully:", data.Name, "(PlaceId:", game.PlaceId .. ")")
-		GUI:SetCore("SendNotification", {Title = name.." Loaded", Text = "Script loaded successfully ✅", Duration = 4})
-	else
-		warn("[inltree] ⚠️ Script load failed. Using default script.")
-		GUI:SetCore("SendNotification", {Title = "Script Load Failed", Text = "Using default script.", Duration = 4})
-		loadURL(DEF_URL)
-	end
-	printList()
+local currentGameData = gameConfig[game.PlaceId]
+
+if currentGameData and currentGameData.ScriptUrl ~= "" then
+    if loadScriptFromUrl(currentGameData.ScriptUrl) then
+        showNotification("print", "✅ Script loaded successfully:", currentGameData.Name .. " (PlaceId: " .. game.PlaceId .. ")")
+        showNotification("notify", gameName.." Loaded", "Script loaded successfully. ✅")
+    else
+        showNotification("warn", "⚠️ Script load failed. Using default script.")
+        showNotification("notify", "Script Load Failed", "Using default script. ⚠️")
+        loadScriptFromUrl(DEFAULT_SCRIPT_URL)
+    end
+    displaySupportedGamesList()
 else
-	warn("[inltree] ⚠️ No matching script found. Using default script.")
-	printList()
-	GUI:SetCore("SendNotification", {Title = "No Matching Script", Text = "Loaded default script.", Duration = 4})
-	loadURL(DEF_URL)
+    showNotification("warn", "⚠️ No matching script found. Using default script.")
+    displaySupportedGamesList()
+    showNotification("notify", "No Matching Script", "Loaded default script. ⚠️")
+    loadScriptFromUrl(DEFAULT_SCRIPT_URL)
 end
+
+-- Anti-AFK
+if getconnections then
+    for _, connection in ipairs(getconnections(LocalPlayer.Idled)) do
+        if connection.Disable then
+            connection:Disable()
+        elseif connection.Disconnect then
+            connection:Disconnect() 
+        end
+    end
+else
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end
+
+showNotification("print", "✅ Anti Afk Successfully Enabled.")
+showNotification("notify", "ANTI-AFK", "Successfully Enabled. ✅")
