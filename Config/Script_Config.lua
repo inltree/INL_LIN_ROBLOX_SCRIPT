@@ -1,4 +1,4 @@
-local Script_Config = {
+local Game_Config = {
     [4483381587] = {
         Name = "一个字面上的底板。｜(a literal baseplate.)",
         ScriptUrl = ""
@@ -25,7 +25,7 @@ local Script_Config = {
     },
     [5171093784] = {
         Name = "不要按按钮四｜(Don't Press The Button 4)",
-        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Build/Don't_Press_The_Button_4.lua"
+        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Don't_Press_The_Button_4.lua"
     },
     [189707] = {
         Name = "自然灾害生存｜(Natural Disaster Survival)",
@@ -33,4 +33,4 @@ local Script_Config = {
     }
 }
 
-return Script_Config
+return Game_Config
