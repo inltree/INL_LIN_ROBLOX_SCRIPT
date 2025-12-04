@@ -9,8 +9,8 @@ local library = {flags = {}, windows = {}, open = true}
 
 -- 字体配置
 library.fonts = {
-    titleset = Enum.Font.SourceSans,  -- 标题字体
-    contentset = Enum.Font.SourceSans, -- 内容字体
+    titleset = Enum.Font.Cartoon,  -- 标题字体
+    contentset = Enum.Font.Cartoon, -- 内容字体
     buttonset = Enum.Font.SourceSans   -- 按钮字体
 }
 
