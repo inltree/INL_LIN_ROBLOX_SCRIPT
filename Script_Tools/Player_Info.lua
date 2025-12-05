@@ -1,8 +1,8 @@
 --[[
-   📘 玩家信息显示器
+   📊 玩家信息统计
    作者：inltree｜Lin×AI
-   更新：优化拖动、优化界面、添加更多信息
-   版本：v2.0 - 增强版
+   更新：优化FPS显示
+   版本：v2.0
 ]]
 
 -- 🧩 服务定义
@@ -17,6 +17,7 @@ local Services = {
     Stats = game:GetService("Stats"),
     TeleportService = game:GetService("TeleportService"),
     StarterGui = game:GetService("StarterGui"),
+    RunService = game:GetService("RunService"),
 }
 local LocalPlayer = Services.Players.LocalPlayer
 local JoinTime = tick()
@@ -27,65 +28,85 @@ local JobId = game.JobId
 local totalPlayersJoined = 0
 local totalPlayersLeft = 0
 
+-- 📈 FPS统计变量
+local heartbeatFrameCount = 0
+local heartbeatLastUpdateTime = tick()
+local realTimeFPS = 0
+local physicsFPSValue = 0
+
+-- 初始化FPS计算
+task.spawn(function()
+    while task.wait() do
+        local currentTime = tick()
+        heartbeatFrameCount = heartbeatFrameCount + 1
+        
+        if currentTime - heartbeatLastUpdateTime >= 1 then
+            realTimeFPS = heartbeatFrameCount
+            heartbeatFrameCount = 0
+            heartbeatLastUpdateTime = currentTime
+        end
+    end
+end)
+
 totalPlayersJoined = #Services.Players:GetPlayers()
-Services.Players.PlayerAdded:Connect(function(player)
+Services.Players.PlayerAdded:Connect(function(newPlayer)
     totalPlayersJoined = totalPlayersJoined + 1
 end)
-Services.Players.PlayerRemoving:Connect(function(player)
+Services.Players.PlayerRemoving:Connect(function(leavingPlayer)
     totalPlayersLeft = totalPlayersLeft + 1
 end)
 
 -- 🎨 样式配置
-local Colors = {
+local UI_Colors = {
     Text = Color3.fromRGB(255, 255, 255),
     Background = Color3.fromRGB(51, 51, 51),
     Button = Color3.fromRGB(26, 26, 26),
-    Alpha = 0.5
+    Transparency = 0.5
 }
-local FontStyle = {
+local UI_FontStyle = {
     Font = Enum.Font.SourceSansBold,
     Size = 16
 }
 
 -- 🪟 主容器（在CoreGui中创建）
-local playerInfoGui = Instance.new("ScreenGui")
-playerInfoGui.Name = "PlayerInfoUI"
-playerInfoGui.ResetOnSpawn = false
-playerInfoGui.IgnoreGuiInset = true
-playerInfoGui.Parent = game:GetService("CoreGui")
+local playerInfoScreenGui = Instance.new("ScreenGui")
+playerInfoScreenGui.Name = "PlayerInfoUI"
+playerInfoScreenGui.ResetOnSpawn = false
+playerInfoScreenGui.IgnoreGuiInset = true
+playerInfoScreenGui.Parent = game:GetService("CoreGui")
 
 -- 📋 信息面板
-local infoFrame = Instance.new("Frame", playerInfoGui)
-infoFrame.Size = UDim2.new(0.9, 0, 0.5, 0)
-infoFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
-infoFrame.BackgroundColor3 = Colors.Background
-infoFrame.BackgroundTransparency = Colors.Alpha
-infoFrame.BorderSizePixel = 2
-infoFrame.BorderColor3 = Color3.fromRGB(255, 128, 0)
-infoFrame.ClipsDescendants = true
+local mainInfoFrame = Instance.new("Frame", playerInfoScreenGui)
+mainInfoFrame.Size = UDim2.new(0.9, 0, 0.5, 0)
+mainInfoFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+mainInfoFrame.BackgroundColor3 = UI_Colors.Background
+mainInfoFrame.BackgroundTransparency = UI_Colors.Transparency
+mainInfoFrame.BorderSizePixel = 2
+mainInfoFrame.BorderColor3 = Color3.fromRGB(255, 128, 0)
+mainInfoFrame.ClipsDescendants = true
 
-local scrollFrame = Instance.new("ScrollingFrame", infoFrame)
-scrollFrame.Size = UDim2.new(1, -10, 1, -10)
-scrollFrame.Position = UDim2.new(0, 5, 0, 5)
-scrollFrame.BackgroundTransparency = 1
-scrollFrame.ScrollBarThickness = 8
-scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local scrollContainer = Instance.new("ScrollingFrame", mainInfoFrame)
+scrollContainer.Size = UDim2.new(1, -10, 1, -10)
+scrollContainer.Position = UDim2.new(0, 5, 0, 5)
+scrollContainer.BackgroundTransparency = 1
+scrollContainer.ScrollBarThickness = 8
+scrollContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-local infoLabel = Instance.new("TextLabel", scrollFrame)
-infoLabel.Size = UDim2.new(1, -10, 0, 0)
-infoLabel.BackgroundTransparency = 1
-infoLabel.TextColor3 = Colors.Text
-infoLabel.Font = FontStyle.Font
-infoLabel.TextSize = FontStyle.Size
-infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-infoLabel.TextYAlignment = Enum.TextYAlignment.Top
-infoLabel.RichText = true
-infoLabel.TextWrapped = true
-infoLabel.AutomaticSize = Enum.AutomaticSize.Y
-infoLabel.Text = "None..."
+local infoDisplayLabel = Instance.new("TextLabel", scrollContainer)
+infoDisplayLabel.Size = UDim2.new(1, -10, 0, 0)
+infoDisplayLabel.BackgroundTransparency = 1
+infoDisplayLabel.TextColor3 = UI_Colors.Text
+infoDisplayLabel.Font = UI_FontStyle.Font
+infoDisplayLabel.TextSize = UI_FontStyle.Size
+infoDisplayLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoDisplayLabel.TextYAlignment = Enum.TextYAlignment.Top
+infoDisplayLabel.RichText = true
+infoDisplayLabel.TextWrapped = true
+infoDisplayLabel.AutomaticSize = Enum.AutomaticSize.Y
+infoDisplayLabel.Text = "正在加载..."
 
 -- 💻 平台枚举表
-local PLATFORM_MAP = {
+local PLATFORM_DATA = {
     [Enum.Platform.Windows] = { name = "Windows 系统", category = "桌面设备" },
     [Enum.Platform.IOS] = { name = "iOS 系统", category = "移动设备" },
     [Enum.Platform.Android] = { name = "Android 系统", category = "移动设备" },
@@ -93,130 +114,133 @@ local PLATFORM_MAP = {
     [Enum.Platform.Linux] = { name = "Linux 系统", category = "桌面设备" },
     [Enum.Platform.XBoxOne] = { name = "Xbox One", category = "游戏主机" },
     [Enum.Platform.PS4] = { name = "PlayStation 4", category = "游戏主机" },
-    [Enum.Platform.None] = { name = "None", category = "None" }
+    [Enum.Platform.None] = { name = "未知平台", category = "特殊平台" }
 }
 
 -- 🧭 获取平台信息
-local function getPlatformInfo()
-    local uis = Services.UserInputService
-    local platform = uis:GetPlatform()
-    local currentPlatform = PLATFORM_MAP[platform] or PLATFORM_MAP[Enum.Platform.None]
+local function getPlatformDetails()
+    local userInput = Services.UserInputService
+    local platformType = userInput:GetPlatform()
+    local currentPlatform = PLATFORM_DATA[platformType] or PLATFORM_DATA[Enum.Platform.None]
 
-    local localTime = DateTime.now():ToLocalTime()
-    local formattedTime = string.format("%d年%d月%d日 %02d:%02d:%02d",
-        localTime.Year, localTime.Month, localTime.Day,
-        localTime.Hour, localTime.Minute, localTime.Second)
+    local localDateTime = DateTime.now():ToLocalTime()
+    local formattedDateTime = string.format("%d年%d月%d日 %02d:%02d:%02d",
+        localDateTime.Year, localDateTime.Month, localDateTime.Day,
+        localDateTime.Hour, localDateTime.Minute, localDateTime.Second)
 
-    local executor = identifyexecutor and identifyexecutor() or "None"
-    local inputDevices = {}
-    if uis.TouchEnabled then table.insert(inputDevices, "触屏") end
-    if uis.KeyboardEnabled then table.insert(inputDevices, "键盘") end
-    if uis.MouseEnabled then table.insert(inputDevices, "鼠标") end
-    if uis.GamepadEnabled then table.insert(inputDevices, "手柄") end
+    local executorName = identifyexecutor and identifyexecutor() or "未知执行器"
+    local inputDeviceList = {}
+    if userInput.TouchEnabled then table.insert(inputDeviceList, "触屏") end
+    if userInput.KeyboardEnabled then table.insert(inputDeviceList, "键盘") end
+    if userInput.MouseEnabled then table.insert(inputDeviceList, "鼠标") end
+    if userInput.GamepadEnabled then table.insert(inputDeviceList, "手柄") end
 
-    local inputDesc = #inputDevices > 0 and table.concat(inputDevices, " | ") or "无特殊输入"
+    local inputDescription = #inputDeviceList > 0 and table.concat(inputDeviceList, " | ") or "无特殊输入"
 
-    return formattedTime, executor, currentPlatform.name .. " | 类别: " .. currentPlatform.category, tostring(platform), inputDesc
+    return formattedDateTime, executorName, currentPlatform.name .. " | 类别: " .. currentPlatform.category, tostring(platformType), inputDescription
 end
 
--- 🕒 在线时间
-local function formatTime(seconds)
-    local h = math.floor(seconds / 3600)
-    local m = math.floor((seconds % 3600) / 60)
-    local s = math.floor(seconds % 60)
-    return string.format("%02d时%02d分%02d秒", h, m, s)
+-- 🕒 格式化在线时间
+local function formatPlayTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secondsRemaining = math.floor(seconds % 60)
+    return string.format("%02d时%02d分%02d秒", hours, minutes, secondsRemaining)
 end
 
 -- 👥 好友统计
-local function getFriendsCount()
-    local players = Services.Players:GetPlayers()
-    local myFriendsCount = 0
+local function countServerFriends()
+    local currentPlayers = Services.Players:GetPlayers()
+    local friendCount = 0
     
-    for _, player in ipairs(players) do
-        if player ~= LocalPlayer then
+    for _, otherPlayer in ipairs(currentPlayers) do
+        if otherPlayer ~= LocalPlayer then
             local success, isFriend = pcall(function()
-                return LocalPlayer:IsFriendsWith(player.UserId)
+                return LocalPlayer:IsFriendsWith(otherPlayer.UserId)
             end)
             
             if success and isFriend then
-                myFriendsCount = myFriendsCount + 1
+                friendCount = friendCount + 1
             end
         end
     end
     
-    return myFriendsCount
+    return friendCount
 end
 
 -- 🧩 收集玩家数据
-local function collectPlayerData()
-    local player = LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
+local function gatherPlayerInfo()
+    local currentPlayer = LocalPlayer
+    local playerCharacter = currentPlayer.Character or currentPlayer.CharacterAdded:Wait()
+    local playerHumanoid = playerCharacter:FindFirstChildOfClass("Humanoid")
+    local playerRoot = playerCharacter:FindFirstChild("HumanoidRootPart")
 
-    local userName, displayName, userId = player.Name, player.DisplayName, player.UserId
-    local accountAge, clientId = player.AccountAge, Services.AnalyticsService:GetClientId()
-    local membershipType = player.MembershipType
-    local isPremium = (membershipType == Enum.MembershipType.Premium) and "是" or "否"
-    local position = rootPart and rootPart.Position or Vector3.new(0, 0, 0)
+    local playerUsername, playerDisplayName, playerID = currentPlayer.Name, currentPlayer.DisplayName, currentPlayer.UserId
+    local accountAgeDays, analyticsClientId = currentPlayer.AccountAge, Services.AnalyticsService:GetClientId()
+    local membershipLevel = currentPlayer.MembershipType
+    local isPremiumMember = (membershipLevel == Enum.MembershipType.Premium) and "是" or "否"
+    local playerPosition = playerRoot and playerRoot.Position or Vector3.new(0, 0, 0)
 
-    local placeId = game.PlaceId
-    local ok, placeInfo = pcall(function()
-        return Services.MarketplaceService:GetProductInfo(placeId)
+    local gamePlaceId = game.PlaceId
+    local success, placeData = pcall(function()
+        return Services.MarketplaceService:GetProductInfo(gamePlaceId)
     end)
-    local placeName = ok and placeInfo.Name or "None"
+    local placeDisplayName = success and placeData.Name or "未知游戏"
 
-    local playerCount = #Services.Players:GetPlayers()
-    local maxPlayers = Services.Players.MaxPlayers
+    local currentPlayerCount = #Services.Players:GetPlayers()
+    local maxServerCapacity = Services.Players.MaxPlayers
     
-    local myFriendsCount = getFriendsCount()
+    local friendCountInServer = countServerFriends()
     
-    local userAgent = Services.HttpService:GetUserAgent()
-    local currentTime, executor, platformDesc, platformEnum, inputDesc = getPlatformInfo()
+    local userAgentString = Services.HttpService:GetUserAgent()
+    local currentDateTime, executorName, platformInfo, platformCode, inputDevices = getPlatformDetails()
 
-    local sessionTime = tick() - JoinTime
-    local ping = math.floor(Services.Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-    local fps = math.floor(workspace:GetRealPhysicsFPS())
-    local memory = math.floor(Services.Stats:GetTotalMemoryUsageMb())
-    local health = humanoid and math.floor(humanoid.Health) or 0
-    local maxHealth = humanoid and math.floor(humanoid.MaxHealth) or 0
+    local sessionDuration = tick() - JoinTime
+    local networkLatency = math.floor(Services.Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+
+    physicsFPSValue = math.floor(workspace:GetRealPhysicsFPS())
+    
+    local memoryUsageMB = math.floor(Services.Stats:GetTotalMemoryUsageMb())
+    local currentHealth = playerHumanoid and math.floor(playerHumanoid.Health) or 0
+    local maximumHealth = playerHumanoid and math.floor(playerHumanoid.MaxHealth) or 0
 
     return {
-        userName = userName,
-        displayName = displayName,
-        userId = userId,
-        accountAge = accountAge,
-        isPremium = isPremium,
+        username = playerUsername,
+        displayName = playerDisplayName,
+        userId = playerID,
+        accountAge = accountAgeDays,
+        premiumStatus = isPremiumMember,
         
-        clientId = clientId,
-        placeId = placeId,
-        placeName = placeName,
-        jobId = JobId,
-        playerCount = playerCount,
-        maxPlayers = maxPlayers,
+        clientIdentifier = analyticsClientId,
+        gamePlaceId = gamePlaceId,
+        placeName = placeDisplayName,
+        serverJobId = JobId,
+        playerCount = currentPlayerCount,
+        maxPlayers = maxServerCapacity,
         totalJoined = totalPlayersJoined,
         totalLeft = totalPlayersLeft,
         
-        myFriendsCount = myFriendsCount,
+        serverFriendCount = friendCountInServer,
         
-        userAgent = userAgent,
-        currentTime = currentTime,
-        executor = executor,
-        platformDesc = platformDesc,
-        inputDesc = inputDesc,
-        platformEnum = platformEnum,
-        position = string.format("(%.2f, %.2f, %.2f)", position.X, position.Y, position.Z),
-        sessionTime = formatTime(sessionTime),
-        ping = ping,
-        fps = fps,
-        memory = memory,
-        health = health,
-        maxHealth = maxHealth
+        userAgent = userAgentString,
+        currentDateTime = currentDateTime,
+        executor = executorName,
+        platformDetails = platformInfo,
+        inputDescription = inputDevices,
+        platformEnum = platformCode,
+        position = string.format("(%.2f, %.2f, %.2f)", playerPosition.X, playerPosition.Y, playerPosition.Z),
+        sessionTime = formatPlayTime(sessionDuration),
+        pingLatency = networkLatency,
+        realTimeFPS = realTimeFPS,
+        physicsFPS = physicsFPSValue,
+        memoryUsage = memoryUsageMB,
+        currentHealth = currentHealth,
+        maxHealth = maximumHealth
     }
 end
 
 -- 📋 分类显示格式
-local function formatPlayerData(d)
+local function formatDisplayData(data)
     return string.format([[
 
 <font color="rgb(255,255,255)" size="20"><b>📁 基本信息</b></font>
@@ -238,8 +262,8 @@ local function formatPlayerData(d)
 <font color="rgb(255,128,255)">服务器联系人:</font> %d
 
 <font color="rgb(255,255,255)" size="20"><b>⚙️ 系统信息</b></font>
-<font color="rgb(255,140,0)">Ping 延迟:</font> %d MS
-<font color="rgb(0,255,255)">帧率 (FPS):</font> %d
+<font color="rgb(255,140,0)">延迟 (Ping):</font> %d MS
+<font color="rgb(255,255,50)">帧率 (FPS):</font> %d / %d
 <font color="rgb(173,255,47)">内存占用:</font> %d MB
 <font color="rgb(255,102,204)">当前时间:</font> %s
 <font color="rgb(128,128,128)">客户端ID:</font> %s
@@ -251,27 +275,27 @@ local function formatPlayerData(d)
 <font color="rgb(255,204,102)">输入设备:</font> %s
 <font color="rgb(153,153,255)">平台枚举:</font> %s
 ]],
-        d.userName, d.displayName, d.userId, d.accountAge, d.isPremium,
-        d.health, d.maxHealth, d.position, d.sessionTime,
-        d.placeName, d.placeId, d.jobId, d.playerCount, d.maxPlayers,
-        d.totalJoined, d.totalLeft, d.myFriendsCount,
-        d.ping, d.fps, d.memory, d.currentTime, d.clientId, d.userAgent,
-        d.executor, d.platformDesc, d.inputDesc, d.platformEnum)
+        data.username, data.displayName, data.userId, data.accountAge, data.premiumStatus,
+        data.currentHealth, data.maxHealth, data.position, data.sessionTime,
+        data.placeName, data.gamePlaceId, data.serverJobId, data.playerCount, data.maxPlayers,
+        data.totalJoined, data.totalLeft, data.serverFriendCount,
+        data.pingLatency, data.realTimeFPS, data.physicsFPS, data.memoryUsage, data.currentDateTime, data.clientIdentifier, data.userAgent,
+        data.executor, data.platformDetails, data.inputDescription, data.platformEnum)
 end
 
--- 更新信息
-local function updatePlayerInfo()
+-- 更新信息显示
+local function refreshInfoDisplay()
     pcall(function()
-        infoLabel.Text = formatPlayerData(collectPlayerData())
+        infoDisplayLabel.Text = formatDisplayData(gatherPlayerInfo())
     end)
 end
-task.defer(updatePlayerInfo)
+task.defer(refreshInfoDisplay)
 
--- 🔁 实时更新
+-- 🔁 实时更新循环
 task.spawn(function()
     while task.wait(0.2) do
-        if playerInfoGui.Parent then
-            pcall(updatePlayerInfo)
+        if playerInfoScreenGui.Parent then
+            pcall(refreshInfoDisplay)
         else
             break
         end
@@ -279,30 +303,30 @@ task.spawn(function()
 end)
 
 -- 🎛️ 按钮面板
-local buttonPanel = Instance.new("Frame", playerInfoGui)
-buttonPanel.Size = UDim2.new(0, 80, 0, 80)
-buttonPanel.AnchorPoint = Vector2.new(0.5, 0.5)
-buttonPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
-buttonPanel.BackgroundTransparency = 1
-buttonPanel.BorderSizePixel = 2
-buttonPanel.BorderColor3 = Color3.fromRGB(0, 128, 128)
+local controlPanel = Instance.new("Frame", playerInfoScreenGui)
+controlPanel.Size = UDim2.new(0, 80, 0, 80)
+controlPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+controlPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
+controlPanel.BackgroundTransparency = 1
+controlPanel.BorderSizePixel = 2
+controlPanel.BorderColor3 = Color3.fromRGB(0, 128, 128)
 
 -- 按钮生成函数
-local function createButton(text, y, color, onClick)
-    local btn = Instance.new("TextButton", buttonPanel)
-    btn.Size = UDim2.new(1, -10, 0, 35)
-    btn.Position = UDim2.new(0, 5, 0, y)
-    btn.Text = text
-    btn.Font = FontStyle.Font
-    btn.TextSize = FontStyle.Size
-    btn.TextColor3 = color
-    btn.BackgroundColor3 = Colors.Button
-    btn.BackgroundTransparency = Colors.Alpha
-    btn.BorderSizePixel = 2
-    btn.BorderColor3 = Color3.fromRGB(0, 128, 128)
-    btn.TextScaled = true
-    if onClick then btn.MouseButton1Click:Connect(onClick) end
-    return btn
+local function createControlButton(buttonText, yPosition, textColor, clickAction)
+    local button = Instance.new("TextButton", controlPanel)
+    button.Size = UDim2.new(1, -10, 0, 35)
+    button.Position = UDim2.new(0, 5, 0, yPosition)
+    button.Text = buttonText
+    button.Font = UI_FontStyle.Font
+    button.TextSize = UI_FontStyle.Size
+    button.TextColor3 = textColor
+    button.BackgroundColor3 = UI_Colors.Button
+    button.BackgroundTransparency = UI_Colors.Transparency
+    button.BorderSizePixel = 2
+    button.BorderColor3 = Color3.fromRGB(0, 128, 128)
+    button.TextScaled = true
+    if clickAction then button.MouseButton1Click:Connect(clickAction) end
+    return button
 end
 
 -- 伺服器跳转
@@ -310,24 +334,24 @@ local function serverHop()
     task.wait()
     print("[inltree] 🔍 正在搜索人数最少的服务器...")
     
-    local Number = math.huge
-    local SomeSRVS = {}
-    local found = 0
+    local lowestPlayerCount = math.huge
+    local targetServers = {}
+    local foundPlayers = 0
     
     local success, result = pcall(function()
-        for _, v in ipairs(Services.HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data) do
-            if type(v) == "table" and v.maxPlayers > v.playing and v.id ~= JobId then
-                if v.playing < Number then
-                    Number = v.playing
-                    SomeSRVS[1] = v.id
-                    found = v.playing
+        for _, serverData in ipairs(Services.HttpService:JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data) do
+            if type(serverData) == "table" and serverData.maxPlayers > serverData.playing and serverData.id ~= JobId then
+                if serverData.playing < lowestPlayerCount then
+                    lowestPlayerCount = serverData.playing
+                    targetServers[1] = serverData.id
+                    foundPlayers = serverData.playing
                 end
             end
         end
         
-        if #SomeSRVS > 0 then
-            print("[inltree] ✅ 正在跳转服务器 | 玩家数量: " .. found)
-            Services.TeleportService:TeleportToPlaceInstance(PlaceId, SomeSRVS[1], Services.Players.LocalPlayer)
+        if #targetServers > 0 then
+            print("[inltree] ✅ 正在跳转服务器 | 玩家数量: " .. foundPlayers)
+            Services.TeleportService:TeleportToPlaceInstance(PlaceId, targetServers[1], Services.Players.LocalPlayer)
         else
             warn("[inltree] ⚠️ 未找到合适的服务器")
         end
@@ -339,7 +363,7 @@ local function serverHop()
 end
 
 -- 重新加入伺服器
-local function rejoin()
+local function rejoinServer()
     if #Services.Players:GetPlayers() <= 1 then
         Services.Players.LocalPlayer:Kick("重新加入中...\n(Rejoining...)")
         task.wait()
@@ -350,7 +374,7 @@ local function rejoin()
 end
 
 -- 控制台功能
-local function openConsole()
+local function openDeveloperConsole()
     local success = pcall(function()
         Services.StarterGui:SetCore("DevConsoleVisible", true)
     end)
@@ -363,8 +387,8 @@ local function openConsole()
 end
 
 -- 创建按钮
-local hidden = false
-local buttonYPositions = {
+local isHidden = false
+local buttonPositions = {
     copy = 0,
     console = 35,
     serverhop = 70,
@@ -373,69 +397,69 @@ local buttonYPositions = {
     hide = 175
 }
 
-local copyButton = createButton("复制数据", buttonYPositions.copy, Color3.fromRGB(0, 255, 0), function()
-    setclipboard(infoLabel.Text:gsub("<.->", ""))
+local copyDataButton = createControlButton("复制数据", buttonPositions.copy, Color3.fromRGB(0, 255, 0), function()
+    setclipboard(infoDisplayLabel.Text:gsub("<.->", ""))
 end)
 
-local consoleButton = createButton("控制台", buttonYPositions.console, Color3.fromRGB(255, 255, 128), openConsole)
+local consoleButton = createControlButton("控制台", buttonPositions.console, Color3.fromRGB(255, 255, 128), openDeveloperConsole)
 
-local serverhopButton = createButton("传送伺服", buttonYPositions.serverhop, Color3.fromRGB(128, 255, 128), serverHop)
+local serverHopButton = createControlButton("传送伺服", buttonPositions.serverhop, Color3.fromRGB(128, 255, 128), serverHop)
 
-local rejoinButton = createButton("重新加入", buttonYPositions.rejoin, Color3.fromRGB(255, 178, 77), rejoin)
+local rejoinButton = createControlButton("重新加入", buttonPositions.rejoin, Color3.fromRGB(255, 178, 77), rejoinServer)
 
-local closeButton = createButton("关闭UI", buttonYPositions.close, Color3.fromRGB(255, 0, 0), function()
-    playerInfoGui:Destroy()
+local closeButton = createControlButton("关闭UI", buttonPositions.close, Color3.fromRGB(255, 0, 0), function()
+    playerInfoScreenGui:Destroy()
 end)
 
-local hideButton = createButton("隐藏UI", buttonYPositions.hide, Color3.fromRGB(255, 128, 0))
+local hideButton = createControlButton("隐藏UI", buttonPositions.hide, Color3.fromRGB(255, 128, 0))
 
--- 🔧 优化的拖动逻辑
-local function setupDragger(ui, dragui)
-    dragui = dragui or ui
-    local screenGui = ui:FindFirstAncestorWhichIsA("ScreenGui") or ui.Parent
-    local dragging, dragInput, dragStart, startPos
-    local anchor = ui.AnchorPoint
+-- 🔧 拖动逻辑
+local function setupDraggingInterface(uiElement, dragElement)
+    dragElement = dragElement or uiElement
+    local parentScreenGui = uiElement:FindFirstAncestorWhichIsA("ScreenGui") or uiElement.Parent
+    local isDragging, dragInput, dragOrigin, startPosition
+    local anchor = uiElement.AnchorPoint
 
-    local function safeClamp(v, lo, hi)
-        if hi < lo then hi = lo end
-        return math.clamp(v, lo, hi)
+    local function safeClamp(value, minVal, maxVal)
+        if maxVal < minVal then maxVal = minVal end
+        return math.clamp(value, minVal, maxVal)
     end
 
-    local function update(input)
+    local function updatePosition(input)
         pcall(function()
-            local p = screenGui.AbsoluteSize
-            local s = ui.AbsoluteSize
-            if p.X <= 0 or p.Y <= 0 then return end
-            local startX = startPos.X.Scale * p.X + startPos.X.Offset
-            local startY = startPos.Y.Scale * p.Y + startPos.Y.Offset
-            local dx = input.Position.X - dragStart.X
-            local dy = input.Position.Y - dragStart.Y
-            local minX = anchor.X * s.X
-            local maxX = p.X - (1 - anchor.X) * s.X
-            local minY = anchor.Y * s.Y
-            local maxY = p.Y - (1 - anchor.Y) * s.Y
-            local nx = safeClamp(startX + dx, minX, maxX)
-            local ny = safeClamp(startY + dy, minY, maxY)
-            ui.Position = UDim2.new(nx / p.X, 0, ny / p.Y, 0)
+            local parentSize = parentScreenGui.AbsoluteSize
+            local elementSize = uiElement.AbsoluteSize
+            if parentSize.X <= 0 or parentSize.Y <= 0 then return end
+            local startX = startPosition.X.Scale * parentSize.X + startPosition.X.Offset
+            local startY = startPosition.Y.Scale * parentSize.Y + startPosition.Y.Offset
+            local deltaX = input.Position.X - dragOrigin.X
+            local deltaY = input.Position.Y - dragOrigin.Y
+            local minX = anchor.X * elementSize.X
+            local maxX = parentSize.X - (1 - anchor.X) * elementSize.X
+            local minY = anchor.Y * elementSize.Y
+            local maxY = parentSize.Y - (1 - anchor.Y) * elementSize.Y
+            local newX = safeClamp(startX + deltaX, minX, maxX)
+            local newY = safeClamp(startY + deltaY, minY, maxY)
+            uiElement.Position = UDim2.new(newX / parentSize.X, 0, newY / parentSize.Y, 0)
         end)
     end
 
-    dragui.InputBegan:Connect(function(input)
+    dragElement.InputBegan:Connect(function(input)
         pcall(function()
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = input.Position
-                startPos = ui.Position
-                local c = input.Changed:Connect(function()
+                isDragging = true
+                dragOrigin = input.Position
+                startPosition = uiElement.Position
+                local connection = input.Changed:Connect(function()
                     pcall(function()
-                        if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                        if input.UserInputState == Enum.UserInputState.End then isDragging = false end
                     end)
                 end)
             end
         end)
     end)
 
-    dragui.InputChanged:Connect(function(input)
+    dragElement.InputChanged:Connect(function(input)
         pcall(function()
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 dragInput = input
@@ -445,48 +469,48 @@ local function setupDragger(ui, dragui)
 
     Services.UserInputService.InputChanged:Connect(function(input)
         pcall(function()
-            if input == dragInput and dragging then update(input) end
+            if input == dragInput and isDragging then updatePosition(input) end
         end)
     end)
 
     local function clampToViewport()
         pcall(function()
-            local p = screenGui.AbsoluteSize
-            local s = ui.AbsoluteSize
-            if p.X <= 0 or p.Y <= 0 then return end
-            local curr = ui.Position
-            local absX = curr.X.Scale * p.X + curr.X.Offset
-            local absY = curr.Y.Scale * p.Y + curr.Y.Offset
-            local minX = anchor.X * s.X
-            local maxX = p.X - (1 - anchor.X) * s.X
-            local minY = anchor.Y * s.Y
-            local maxY = p.Y - (1 - anchor.Y) * s.Y
-            local nx = safeClamp(absX, minX, maxX)
-            local ny = safeClamp(absY, minY, maxY)
-            ui.Position = UDim2.new(nx / p.X, 0, ny / p.Y, 0)
+            local parentSize = parentScreenGui.AbsoluteSize
+            local elementSize = uiElement.AbsoluteSize
+            if parentSize.X <= 0 or parentSize.Y <= 0 then return end
+            local current = uiElement.Position
+            local absX = current.X.Scale * parentSize.X + current.X.Offset
+            local absY = current.Y.Scale * parentSize.Y + current.Y.Offset
+            local minX = anchor.X * elementSize.X
+            local maxX = parentSize.X - (1 - anchor.X) * elementSize.X
+            local minY = anchor.Y * elementSize.Y
+            local maxY = parentSize.Y - (1 - anchor.Y) * elementSize.Y
+            local newX = safeClamp(absX, minX, maxX)
+            local newY = safeClamp(absY, minY, maxY)
+            uiElement.Position = UDim2.new(newX / parentSize.X, 0, newY / parentSize.Y, 0)
         end)
     end
 
-    screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(clampToViewport)
-    if ui and ui.GetPropertyChangedSignal then
-        ui:GetPropertyChangedSignal("AbsoluteSize"):Connect(clampToViewport)
+    parentScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(clampToViewport)
+    if uiElement and uiElement.GetPropertyChangedSignal then
+        uiElement:GetPropertyChangedSignal("AbsoluteSize"):Connect(clampToViewport)
     end
     clampToViewport()
 
-    pcall(function() ui.Active = true end)
-    pcall(function() dragui.Active = true end)
+    pcall(function() uiElement.Active = true end)
+    pcall(function() dragElement.Active = true end)
 end
 
 -- 🎯 设置按钮面板的拖动功能
-setupDragger(buttonPanel, hideButton)
+setupDraggingInterface(controlPanel, hideButton)
 
 -- 隐藏/显示UI功能
 hideButton.MouseButton1Click:Connect(function()
-    hidden = not hidden
-    for _, v in ipairs({infoFrame, copyButton, consoleButton, serverhopButton, rejoinButton, closeButton}) do
-        v.Visible = not hidden
+    isHidden = not isHidden
+    for _, element in ipairs({mainInfoFrame, copyDataButton, consoleButton, serverHopButton, rejoinButton, closeButton}) do
+        element.Visible = not isHidden
     end
-    hideButton.Text = hidden and "显示UI" or "隐藏UI"
+    hideButton.Text = isHidden and "显示UI" or "隐藏UI"
 end)
 
 print("[inltree] ✅ Player information display loaded successfully.")
