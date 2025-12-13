@@ -22,40 +22,27 @@ local TranslationCache = {}
 local TranslatedGuiSet = {}
 local OriginalTextMap = {}
 
--- 优化频率限制配置
 local TranslationConfig = {
-    minRequestInterval = 0.1,      -- 最小间隔0.1秒
-    maxRequestsPerWindow = 10,     -- 增加窗口内最大请求数10
-    windowDuration = 1,            -- 增加时间窗口1秒
-    maxTextLength = 100            -- 增加最大文本长度100
+    minRequestInterval = 0.1,
+    maxRequestsPerWindow = 10,
+    windowDuration = 1,
+    maxTextLength = 100
 }
 
 local LastRequestTime = 0
 local RequestTimestamps = {}
 
--- 优化频率限制控制器 - 修复卡死问题
 local function WaitForRateLimit()
     if not isSystemEnabled then return end
-    
     local now = os.clock()
-
-    -- 清理过期请求
     for i = #RequestTimestamps, 1, -1 do
         if now - RequestTimestamps[i] > TranslationConfig.windowDuration then
             table.remove(RequestTimestamps, i)
         end
     end
 
-    -- 使用非阻塞方式等待窗口可用
-    local waitStart = os.clock()
     while #RequestTimestamps >= TranslationConfig.maxRequestsPerWindow do
-        -- 添加超时保护，避免无限等待
-        if os.clock() - waitStart > 5 then
-            Notification:SendNotification("Warning", "频率限制超时，跳过等待", 2)
-            break
-        end
-        
-        task.wait(0.05)  -- 减少等待时间
+        task.wait(0.1)
         now = os.clock()
         for i = #RequestTimestamps, 1, -1 do
             if now - RequestTimestamps[i] > TranslationConfig.windowDuration then
@@ -64,10 +51,9 @@ local function WaitForRateLimit()
         end
     end
 
-    -- 最小调用间隔
     local sinceLast = now - LastRequestTime
     if sinceLast < TranslationConfig.minRequestInterval then
-        task.wait(math.min(TranslationConfig.minRequestInterval - sinceLast, 0.5))
+        task.wait(TranslationConfig.minRequestInterval - sinceLast)
     end
 
     LastRequestTime = os.clock()
@@ -118,14 +104,12 @@ local function DetectSourceLanguage(text)
     return "auto"
 end
 
--- 优化翻译功能
+-- 翻译功能
 local function TranslateText(text)
     if not text or text == "" then return text end
     if TranslationCache[text] then return TranslationCache[text] end
     if #text > TranslationConfig.maxTextLength then
-        task.spawn(function()
-            Notification:SendNotification("Warning", "文本过长跳过翻译 ("..#text.." > "..TranslationConfig.maxTextLength..")", 3)
-        end)
+        Notification:SendNotification("Warning", "文本过长跳过翻译 ("..#text.." > "..TranslationConfig.maxTextLength..")", 3)
         return text
     end
 
@@ -135,44 +119,34 @@ local function TranslateText(text)
         return text
     end
 
-    local success, result = pcall(function()
-        WaitForRateLimit()
-        
-        local ok, response = pcall(function()
-            local url = string.format(
-                "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=%s&dt=t&q=%s",
-                TargetLanguageCode,
-                HttpService:UrlEncode(text)
-            )
-            return game:HttpGet(url)
-        end)
+    WaitForRateLimit()
 
-        if ok and response then
-            local decodeSuccess, data = pcall(HttpService.JSONDecode, HttpService, response)
-            if decodeSuccess and data and data[1] then
-                local translatedResult = ""
-                for _, seg in ipairs(data[1]) do
-                    if seg[1] then
-                        translatedResult ..= seg[1]
-                    end
-                end
-                TranslationCache[text] = translatedResult
-                return translatedResult
-            end
-        end
-        return text
+    local ok, response = pcall(function()
+        local url = string.format(
+            "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=%s&dt=t&q=%s",
+            TargetLanguageCode,
+            HttpService:UrlEncode(text)
+        )
+        return game:HttpGet(url)
     end)
-    
-    if success then
-        TranslationCache[text] = result
-        return result
-    else
-        TranslationCache[text] = text
-        return text
+
+    if ok and response then
+        local success, data = pcall(HttpService.JSONDecode, HttpService, response)
+        if success and data and data[1] then
+            local result = ""
+            for _, seg in ipairs(data[1]) do
+                result ..= seg[1]
+            end
+            TranslationCache[text] = result
+            return result
+        end
     end
+
+    TranslationCache[text] = text
+    return text
 end
 
--- 优化GUI翻译
+-- GUI翻译
 local function TranslateGuiIfNeeded(gui)
     if not isSystemEnabled or not isAutoTranslateEnabled then return end
     if TranslatedGuiSet[gui] then return end
@@ -186,17 +160,8 @@ local function TranslateGuiIfNeeded(gui)
             end
 
             TranslatedGuiSet[gui] = true
-            
-            task.spawn(function()
-                local success, translatedText = pcall(function()
-                    return TranslateText(originalText)
-                end)
-                
-                if success and gui and gui.Parent then
-                    pcall(function()
-                        gui.Text = translatedText
-                    end)
-                end
+            pcall(function()
+                gui.Text = TranslateText(originalText)
             end)
         end
     end
@@ -222,110 +187,57 @@ local function RestoreAllTexts(silent)
     end
 end
 
--- 优化重新翻译函数 - 添加分批处理和进度提示
 local function RetranslateAllTrackedGuis()
     if not isAutoTranslateEnabled then
-        Notification:SendNotification("Warning", "启动自动翻译", 3)
+        Notification:SendNotification("Warning", "启用自动翻译", 3)
         return
     end
 
-    local reTranslateNotification = Notification:SendNotification("Info", "正在重新翻译中...", 3)
+    local reTranslateNotification = Notification:SendNotification("Info", "正在重新翻译中...", 10)
     
     RestoreAllTexts(true)
-    task.wait(0.2)
+    task.wait(0.5)
 
-    local totalCount = 0
-    for _ in pairs(OriginalTextMap) do totalCount += 1 end
-    
-    if totalCount == 0 then
-        if reTranslateNotification and reTranslateNotification.Close then
-            reTranslateNotification:Close()
-        end
-        Notification:SendNotification("Info", "未成功检索文本", 3)
-        return
-    end
-
-    local processedCount = 0
-    local batchSize = 5
-    
+    local count = 0
     for gui, originalText in pairs(OriginalTextMap) do
         if gui and gui.Parent then
             TranslatedGuiSet[gui] = true
-            
-            task.spawn(function()
-                local success, translatedText = pcall(function()
-                    return TranslateText(originalText)
-                end)
-                
-                if success and gui and gui.Parent then
-                    pcall(function()
-                        gui.Text = translatedText
-                        processedCount += 1
-                        
-                        -- 每完成一批更新进度
-                        if processedCount % batchSize == 0 then
-                            local progress = math.floor((processedCount / totalCount) * 100)
-                            Notification:SendNotification("Info", 
-                                string.format("翻译进度: %d/%d (%d%%)", processedCount, totalCount, progress), 1)
-                        end
-                    end)
-                else
-                    processedCount += 1
-                end
+            pcall(function()
+                gui.Text = TranslateText(originalText)
+                count += 1
             end)
-            
-            if processedCount % batchSize == 0 then
-                task.wait(0.1)
-            end
         end
     end
 
-    -- 等待所有翻译完成（带超时）
-    local startTime = os.clock()
-    while processedCount < totalCount and os.clock() - startTime < 30 do
-        task.wait(0.5)
-    end
-
+    -- 关闭提示
     if reTranslateNotification and reTranslateNotification.Close then
         reTranslateNotification:Close()
     end
 
-    Notification:SendNotification("Success", 
-        string.format("重新翻译成功: %d/%d 个文本", processedCount, totalCount), 3)
+    Notification:SendNotification("Success", ("成功重新翻译 %d 文本"):format(count), 3)
 end
 
--- GUI监听器优化
-local function BindGuiListener(root)
-    root.DescendantAdded:Connect(function(gui)
-        task.defer(TranslateGuiIfNeeded, gui)
-    end)
-
-    -- 分批处理现有元素避免卡死
-    local descendants = root:GetDescendants()
-    local batchSize = 10
-    
-    for i = 1, #descendants, batchSize do
-        for j = i, math.min(i + batchSize - 1, #descendants) do
-            task.defer(TranslateGuiIfNeeded, descendants[j])
-        end
-        task.wait(0.05)  -- 批次间延迟
-    end
-end
-
--- 系统关闭函数
 local function ShutdownSystem()
     isSystemEnabled = false
     isAutoTranslateEnabled = false
     RestoreAllTexts(true)
     Library:Close()
-    Notification:SendNotification("Warning", "自动翻译成功关闭！", 5)
+    Notification:SendNotification("Warning", "自动翻译面板成功关闭", 5)
 end
 
--- 初始化监听
-task.spawn(function()
-    BindGuiListener(PlayerGui)
-    BindGuiListener(CoreGui)
-end)
+-- GUI监听器
+local function BindGuiListener(root)
+    root.DescendantAdded:Connect(function(gui)
+        task.defer(TranslateGuiIfNeeded, gui)
+    end)
+
+    for _, gui in ipairs(root:GetDescendants()) do
+        task.defer(TranslateGuiIfNeeded, gui)
+    end
+end
+
+BindGuiListener(PlayerGui)
+BindGuiListener(CoreGui)
 
 -- UI界面
 local Window = Library:CreateWindow("自动翻译")
@@ -348,6 +260,7 @@ TranslateTab:AddList({
         TargetLanguageCode = DisplayToLangCode[choice] or "zh-CN"
         TranslationCache = {}
         TranslatedGuiSet = {}
+
         Notification:SendNotification("Info", "目标语言: " .. choice, 3)
     end
 })
@@ -355,7 +268,7 @@ TranslateTab:AddList({
 TranslateTab:AddButton({
     text = "重新翻译",
     callback = function()
-        Notification:SendNotification("Info", "重新翻译中...", 2)
+        Notification:SendNotification("Info", "请等待！弹窗提示成功！", 3)
         RetranslateAllTrackedGuis()
     end
 })
@@ -372,7 +285,7 @@ TranslateTab:AddButton({
     callback = ShutdownSystem
 })
 
-local ConfigTab = Window:AddFolder("性能配置")
+local ConfigTab = Window:AddFolder("翻译配置")
 
 ConfigTab:AddSlider({
     text = "API调用间隔(秒)",
@@ -381,60 +294,43 @@ ConfigTab:AddSlider({
     default = TranslationConfig.minRequestInterval,
     callback = function(value)
         TranslationConfig.minRequestInterval = value
-        Notification:SendNotification("Info", "调用间隔: " .. value .. "秒", 2)
+        Notification:SendNotification("Info", "调用间隔: " .. value .. "秒", 3)
     end
 })
 
 ConfigTab:AddSlider({
-    text = "最大请求数",
+    text = "最大请求",
     min = 10,
     max = 50, 
     default = TranslationConfig.maxRequestsPerWindow,
     callback = function(value)
         TranslationConfig.maxRequestsPerWindow = math.floor(value)
-        Notification:SendNotification("Info", "最大请求数: " .. math.floor(value), 2)
+        Notification:SendNotification("Info", "最大请求: " .. math.floor(value), 3)
     end
 })
 
 ConfigTab:AddSlider({
     text = "请求速度(秒)", 
     min = 1,
-    max = 5,
+    max = 30.0,
     default = TranslationConfig.windowDuration, 
     callback = function(value)
         TranslationConfig.windowDuration = value
-        Notification:SendNotification("Info", "请求速度: " .. value .. "秒", 2)
+        Notification:SendNotification("Info", "请求速度: " .. value .. "秒", 3)
     end
 })
 
 ConfigTab:AddSlider({
     text = "翻译长度", 
     min = 100,
-    max = 500,
+    max = 512,
     default = TranslationConfig.maxTextLength, 
     callback = function(value)
         TranslationConfig.maxTextLength = math.floor(value)
-        Notification:SendNotification("Info", "翻译长度: " .. math.floor(value), 2)
-    end
-})
-
-ConfigTab:AddButton({
-    text = "重置配置",
-    callback = function()
-        TranslationConfig = {
-            minRequestInterval = 0.1,
-            maxRequestsPerWindow = 10,
-            windowDuration = 1,
-            maxTextLength = 100
-        }
-        Notification:SendNotification("Success", "成功重置设置", 3)
+        Notification:SendNotification("Info", "翻译长度: " .. math.floor(value), 3)
     end
 })
 
 Library:Init()
 
--- 安全初始化
-task.spawn(function()
-    task.wait(1)
-    Notification:SendNotification("Success", "自动翻译成功加载！", 5)
-end)
+Notification:SendNotification("Success", "自动翻译加载成功！", 5)
