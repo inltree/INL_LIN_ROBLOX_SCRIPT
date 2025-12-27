@@ -1,8 +1,8 @@
 --[[
    📊 玩家信息统计
    作者：inltree｜Lin×AI
-   更新：优化FPS显示
-   版本：v2.0
+   更新：新增每一分钟写入文件夹写入
+   版本：v2.0.1
 ]]
 
 -- 🧩 服务定义
@@ -514,3 +514,33 @@ hideButton.MouseButton1Click:Connect(function()
 end)
 
 print("[inltree] ✅ Player information display loaded successfully.")
+
+-- 📂 创建数据
+local function writePlayerDataToFile()
+    local data = gatherPlayerInfo()
+    local placeDisplayName = data.placeName:gsub("[\\/:*?\"<>|]", "_")
+    local fileName = string.format("%s_%s_%s.txt", PlaceId, placeDisplayName, os.date("%Y%m%d"))
+    local directoryPath = "Player_Info/" .. PlaceId
+    local plainContent = formatDisplayData(data):gsub("<.->", "")
+    
+    if not isfolder(directoryPath) then
+        makefolder(directoryPath)
+        print("[inltree] 📁 创建目录: " .. directoryPath)
+    end
+    
+    pcall(function()
+        writefile(directoryPath .. "/" .. fileName, plainContent)
+        print("[inltree] ✅ 玩家数据已写入: " .. fileName)
+    end)
+end
+
+-- 写入文件
+task.spawn(function()
+    while task.wait(60) do
+        if playerInfoScreenGui.Parent then
+            writePlayerDataToFile()
+        else
+            break
+        end
+    end
+end)
