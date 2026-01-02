@@ -30,6 +30,10 @@ local Game_Config = {
     [189707] = {
         Name = "自然灾害生存｜(Natural Disaster Survival)",
         ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Natural_Disaster_Survival.luau"
+    },
+    [5611648039] = {
+        Name = "谋杀派对｜(Murder Party)",
+        ScriptUrl = "https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Script/Murder_Party.lua"
     }
 }
 
