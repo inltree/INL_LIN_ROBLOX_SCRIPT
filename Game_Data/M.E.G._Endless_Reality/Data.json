@@ -1,1 +1,4 @@
-
+{
+"entityMappings": {"Animation": "动画","AraneaMembri": "蜘蛛腿","Clump": "肢团","Duller": "钝人","Facelings": "面灵","Hound": "猎犬","Howler": "嚎叫","MemoryWorm": "记忆蠕虫","PlayerSkinStealer": "玩家切皮者","Partygoet": "派对客","Partygoer_Invasion": "派对客_入侵","SkinStealer": "窃皮者","Strider": "视觉之神","Smiler": "笑魇魇","RunSmilers": "奔跑笑魇魇","Strangler": "绞杀者","ThePhone": "电话实体","Transporter": "传送者","Twin": "双胞胎","TheVirus": "病毒","Window": "窗户","CheaterMedkit": "作弊医疗箱[物品]"},
+"itemMappings": {"PowerBox": "电源箱","Piece": "派对客宣传","Item": "目标","Item2": "目标2","ItemL": "目标L","ItemF": "目标F"}
+}
