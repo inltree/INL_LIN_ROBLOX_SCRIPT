@@ -1,107 +1,83 @@
--- M.E.G. Endless Reality 脚本 - 基于 Rayfield UI 库
--- 核心功能：通用控制、层级传送、距离显示
+--[[
+    M.E.G. Endless Reality 脚本 - 基于 Tora UI 库
+    优化版本：去除卡密系统，优化结构逻辑
+    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("GradeStuff"):FireServer() -- 提交任务
+    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("LevelPickEvent"):FireServer() -- 层级选择
+    game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("LevelOpt1Picked"):FireServer() -- 选择楼层 LevelOpt1Picked,LevelOpt2Picked,LevelOpt3Picked
+    game:GetService("Players").LocalPlayer.Character:WaitForChild("DeathEvent"):FireServer() -- 死亡卡服额
+]]
 
--- 1. 加载 Rayfield UI 库并初始化窗口
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local MainWindow = Rayfield:CreateWindow({
-    Name = "inltree｜M.E.G. Endless Reality",
-    Icon = 0,
-    LoadingTitle = "inltree｜M.E.G. Endless Reality｜M.E.G.无尽现实",
-    LoadingSubtitle = "Loading...",
-    Theme = "Default",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings = false,
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "inltree｜M.E.G.EndlessReality",
-        FileName = "inltree｜M.E.G.EndlessReality"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "noinvitelink",
-        RememberJoins = true
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "M.E.G.EndlessRealityScript",
-        Subtitle = "密钥系统",
-        Note = "默认密匙：inltree",
-        FileName = "inltree｜M.E.G.EndlessReality_ScriptKey",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"inltree"}
-    }
-})
+local Tora_Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Script_UI_library/Tora_Library/Tora_Library.lua", true))()
+local Window_1 = Tora_Library:CreateWindow("M.E.G. Endless Reality")
+local Window_2 = Tora_Library:CreateWindow("层级功能")
+local Window_3 = Tora_Library:CreateWindow("其它功能")
 
--- 2. 创建功能选项卡
-local Tab_Universal = MainWindow:CreateTab("通用功能", "settings")  -- 通用控制
-local Tab_Hierarchy = MainWindow:CreateTab("层级功能", "layers")   -- 层级交互
-local Tab_Other = MainWindow:CreateTab("其它功能", "more-horizontal") -- 待开发功能
+local Tab_Universal = Window_1:AddFolder("通用功能")
+local Tab_Hierarchy = Window_2:AddFolder("主要功能")
+local Tab_Select = Window_2:AddFolder("选择功能")
+local Tab_Other = Window_3:AddFolder("固定传送(大概无法使用)")
 
--- 3. 全局变量定义（按功能分类）
--- 3.1 通用功能变量
-local IsNightVisionOn = false          -- 夜视开关
-local WalkSpeed = 16                    -- 移动速度（默认16）
-local IsHoldPromptDisabled = false      -- 取消长按交互开关
-local DefaultLighting = {               -- 初始光照备份
+local IsNightVisionOn = false
+local WalkSpeed = 16
+local IsHoldPromptDisabled = false
+local DefaultLighting = {
     Ambient = game.Lighting.Ambient,
     Brightness = game.Lighting.Brightness
 }
 
--- 3.2 距离显示变量
-local TrackedObjects = {}               -- 已跟踪的显示对象
-local IsEntityDisplayOn = false         -- 实体距离显示开关
-local IsItemDisplayOn = false           -- 任务目标显示开关
-local Thread_EntityDisplay = nil        -- 实体显示线程
-local Thread_ItemDisplay = nil          -- 任务目标显示线程
+local TrackedObjects = {}
+local IsEntityDisplayOn = false
+local IsItemDisplayOn = false
+local Thread_EntityDisplay = nil
+local Thread_ItemDisplay = nil
 
--- 4. 通用功能实现
--- 4.1 夜视功能切换
-Tab_Universal:CreateToggle({
-    Name = "夜视功能",
-    CurrentValue = false,
-    Callback = function(IsEnabled)
-        IsNightVisionOn = IsEnabled
-        -- 关闭时恢复初始光照
-        if not IsEnabled then
+Tab_Universal:AddToggle({
+    text = "夜视功能",
+    default = false,
+    callback = function(State)
+        IsNightVisionOn = State
+        if State then
+            game.Lighting.Ambient = Color3.new(1, 1, 1)
+            game.Lighting.Brightness = 1
+        else
             game.Lighting.Ambient = DefaultLighting.Ambient
             game.Lighting.Brightness = DefaultLighting.Brightness
         end
     end
 })
 
--- 4.2 移动速度调节
-Tab_Universal:CreateSlider({
-    Name = "移动速度",
-    Range = {0, 100},
-    Increment = 1,
-    CurrentValue = 16,
-    Callback = function(Value)
+Tab_Universal:AddSlider({
+    text = "移动速度",
+    min = 0,
+    max = 1000,
+    default = 16,
+    callback = function(Value)
         WalkSpeed = Value
     end
 })
 
--- 4.3 取消长按交互
-Tab_Universal:CreateToggle({
-    Name = "取消按钮长按交互",
-    CurrentValue = false,
-    Callback = function(IsEnabled)
-        IsHoldPromptDisabled = IsEnabled
+Tab_Universal:AddToggle({
+    text = "取消按钮长按交互",
+    default = false,
+    callback = function(State)
+        IsHoldPromptDisabled = State
     end
 })
 
--- 4.4 循环维持功能状态（核心逻辑）
 local function MaintainSettingsLoop()
     while task.wait(0.1) do
-        -- 维持夜视效果
+        -- 夜视效果
         if IsNightVisionOn then
             game.Lighting.Ambient = Color3.new(1, 1, 1)
             game.Lighting.Brightness = 1
         end
-
-        -- 维持移动速度（防游戏重置）
-        local LocalPlayer = game.Players.LocalPlayer
+        
         local Character = LocalPlayer.Character
         if Character then
             local Humanoid = Character:FindFirstChild("Humanoid")
@@ -110,10 +86,9 @@ local function MaintainSettingsLoop()
             end
         end
 
-        -- 维持长按交互取消（实时刷新）
         if IsHoldPromptDisabled then
             pcall(function()
-                for _, Prompt in ipairs(game:GetService("ProximityPromptService"):GetChildren()) do
+                for _, Prompt in ipairs(ProximityPromptService:GetChildren()) do
                     if Prompt:IsA("ProximityPrompt") then
                         Prompt.HoldDuration = 0
                     end
@@ -124,30 +99,26 @@ local function MaintainSettingsLoop()
 end
 spawn(MaintainSettingsLoop)
 
--- 4.5 监听新生成的长按提示（补充逻辑）
-game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(Prompt)
+ProximityPromptService.PromptButtonHoldBegan:Connect(function(Prompt)
     if IsHoldPromptDisabled then
         Prompt.HoldDuration = 0
     end
 end)
 
--- 5. 层级功能实现
--- 5.1 传送至随机电梯位置
-Tab_Hierarchy:CreateButton({
-    Name = "传送电梯",
-    Callback = function()
+Tab_Hierarchy:AddButton({
+    text = "传送电梯",
+    callback = function()
         local locations = {
             workspace.SpawnLocation,
             workspace.Elevators.Level0Elevator.SpawnPart,
             workspace.Elevators.Level0Elevator.SpawnLocation
         }
         
-        local target = locations[math.random(1, 3)]
-        game.Players.LocalPlayer.Character:MoveTo(target.Position + Vector3.new(0, 2, 0))
+        local target = locations[math.random(1, #locations)]
+        LocalPlayer.Character:MoveTo(target.Position + Vector3.new(0, 2, 0))
     end
 })
 
--- 5.2 距离显示核心工具函数
 local function CreateDistanceDisplay(TargetModel, TextColor, DisplayText)
     if not TargetModel or not TargetModel:IsA("Model") or TrackedObjects[TargetModel] then
         return
@@ -179,7 +150,6 @@ local function CreateDistanceDisplay(TargetModel, TextColor, DisplayText)
     spawn(function()
         TrackedObjects[TargetModel] = true
         while TargetModel.Parent and BasePart.Parent and TrackedObjects[TargetModel] do
-            local LocalPlayer = game.Players.LocalPlayer
             local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if HumanoidRootPart then
                 local Distance = (HumanoidRootPart.Position - BasePart.Position).Magnitude
@@ -192,7 +162,6 @@ local function CreateDistanceDisplay(TargetModel, TextColor, DisplayText)
     end)
 end
 
--- 清除所有距离显示
 local function ClearAllDistanceDisplays()
     for Model in pairs(TrackedObjects) do
         if Model:IsA("Model") then
@@ -223,59 +192,40 @@ local function FindAllModelsInFolder(TargetFolder)
     return Models
 end
 
--- 获取实体的昵称显示
+local Data_Cache = nil
+task.spawn(function()
+    local success, result = pcall(function()
+        local response = game:HttpGet("https://raw.githubusercontent.com/inltree/INL_LIN_ROBLOX_SCRIPT/main/Game_Data/M.E.G._Endless_Reality/Data.json", true)
+        return HttpService:JSONDecode(response)
+    end)
+
+    if success and result then
+        Data_Cache = result
+        print("映射表加载成功")
+    else
+        warn("映射表加载失败：", result or "未知错误")
+        Data_Cache = {entityMappings={}, itemMappings={}}
+    end
+end)
+
 local function GetEntityDisplayName(model)
-    local nameMappings = {
-        ["Animation"] = "动画",
-        ["AraneaMembri"] = "蜘蛛腿",
-        ["Clump"] = "肢团",
-        ["Duller"] = "钝人",
-        ["Facelings"] = "面灵",
-        ["Hound"] = "猎犬",
-        ["Howler"] = "嚎叫",
-        ["MemoryWorm"] = "记忆蠕虫",
-        ["PlayerSkinStealer"] = "玩家切皮者",
-        ["Partygoet"] = "派对客",
-        ["Partygoer_Invasion"] = "派对客_入侵",
-        ["SkinStealer"] = "窃皮者",
-        ["Strider"] = "视觉之神",
-        ["Smiler"] = "笑魇",
-        ["RunSmilers"] = "奔跑笑魇",
-        ["Strangler"] = "绞杀者",
-        ["ThePhone"] = "电话实体",
-        ["Transporter"] = "传送者",
-        ["Twin"] = "双胞胎",
-        ["TheVirus"] = "病毒",
-        ["Window"] = "窗户",
-        ["CheaterMedkit"] = "作弊医疗箱[物品]",
-    }
-    
-    return nameMappings[model.Name] or model.Name
+    if not Data_Cache then return model.Name end
+    return Data_Cache.entityMappings[model.Name] or model.Name
 end
 
--- 获取任务目标的昵称显示
 local function GetItemDisplayName(model)
-    local nameMappings = {
-        ["PowerBox"] = "电源箱",
-        ["Piece"] = "派对客宣传",
-        ["Item"] = "目标",
-        ["Item2"] = "目标2",
-        ["ItemL"] = "目标L",
-        ["ItemF"] = "目标F",
-    }
-    
-    return nameMappings[model.Name] or model.Name
+    if not Data_Cache then return model.Name end
+    return Data_Cache.itemMappings[model.Name] or model.Name
 end
 
--- 5.3 实体距离显示（红色）
-Tab_Hierarchy:CreateToggle({
-    Name = "实体显示",
-    CurrentValue = false,
-    Callback = function(IsEnabled)
-        IsEntityDisplayOn = IsEnabled
+Tab_Hierarchy:AddToggle({
+    text = "实体显示",
+    default = false,
+    callback = function(State)
+        IsEntityDisplayOn = State
 
-        if not IsEnabled then
-            if Thread_EntityDisplay then Thread_Display = nil end
+        if not State then
+            if Thread_EntityDisplay then Thread_EntityDisplay = nil end
             ClearAllDistanceDisplays()
             return
         end
@@ -298,14 +248,13 @@ Tab_Hierarchy:CreateToggle({
     end
 })
 
--- 5.4 目标显示（绿色）
-Tab_Hierarchy:CreateToggle({
-    Name = "目标显示",
-    CurrentValue = false,
-    Callback = function(IsEnabled)
-        IsItemDisplayOn = IsEnabled
+Tab_Hierarchy:AddToggle({
+    text = "目标显示",
+    default = false,
+    callback = function(State)
+        IsItemDisplayOn = State
 
-        if not IsEnabled then
+        if not State then
             if Thread_ItemDisplay then Thread_ItemDisplay = nil end
             ClearAllDistanceDisplays()
             return
@@ -352,8 +301,31 @@ Tab_Hierarchy:CreateToggle({
     end
 })
 
--- 5.5 层级传送功能
-Tab_Hierarchy:CreateSection("层级传送")
+Tab_Select:AddButton({
+    text = "一键选择地图和任务提交",
+    flag = "button",
+    callback = function()
+        ReplicatedStorage.Events.GradeStuff:FireServer()
+        ReplicatedStorage.Events.LevelPickEvent:FireServer()
+        
+        local levelOpts = {"LevelOpt1Picked", "LevelOpt2Picked", "LevelOpt3Picked"}
+        local randomEvent = levelOpts[math.random(1, #levelOpts)]
+        ReplicatedStorage.Events[randomEvent]:FireServer()
+        print("选择成功！\nTips: 请不要在电梯运行中点击此按钮\n否则出现无限地图生成循环\n请在生成完毕后电梯门打开后进行再次点击进行刷新任务可以多次！")
+    end
+})
+
+Tab_Select:AddLabel({
+    text = "点击上方按钮一次后，打开控制台查看提示信息"
+})
+
+Tab_Select:AddButton({
+    text = "直接死亡(测试)",
+    flag = "button",
+    callback = function()
+    LocalPlayer.Character.DeathEvent:FireServer()
+    end
+})
 
 local Targets = {
     ["!-ExitTeleport"] = "ExitTeleport",
@@ -365,9 +337,9 @@ local Targets = {
 }
 
 for name, targetName in pairs(Targets) do
-    Tab_Hierarchy:CreateButton({
-        Name = "传送-" .. name,
-        Callback = function()
+    Tab_Other:AddButton({
+        text = "传送-" .. name,
+        callback = function()
             local foundObjects = {}
             
             for _, room in ipairs(workspace.Rooms:GetDescendants()) do
@@ -385,7 +357,7 @@ for name, targetName in pairs(Targets) do
             
             if #foundObjects > 0 then
                 local randomTarget = foundObjects[math.random(1, #foundObjects)]
-                game.Players.LocalPlayer.Character:MoveTo(randomTarget.Object.Position + Vector3.new(0, 3, 0))
+                LocalPlayer.Character:MoveTo(randomTarget.Object.Position + Vector3.new(0, 1, 0))
                 print("已传送至对应层级目标: " .. randomTarget.Path)
             else
                 warn("未寻找到对应层级目标: " .. targetName)
@@ -394,8 +366,10 @@ for name, targetName in pairs(Targets) do
     })
 end
 
--- 6. 其它功能（待开发）
-Tab_Other:CreateLabel("Waiting for production｜等待制作")
+Tab_Other:AddLabel({
+    text = "Waiting for production｜等待制作"
+})
 
--- 7. 初始化完成提示
-print("M.E.G.EndlessReality_Script 加载完成")
+print("M.E.G. Endless Reality_Script 加载完成")
+
+Tora_Library:Init()
